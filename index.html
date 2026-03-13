@@ -168,8 +168,8 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
     </div>
     <div id="goods-note-preview"></div>
     <div style="display:flex;gap:8px;margin-top:14px;">
-      <button class="btn btn-success" onclick="exportGoodsNoteExcel()">⬇️ 下載 Excel 貨單</button>
-      <button class="btn btn-ghost" onclick="window.print()">🖨️ 列印</button>
+      <button class="btn btn-success" onclick="exportGoodsNotePDF()">⬇️ 下載 PDF 貨單</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportGoodsNoteExcel()">⬇️ Excel</button>
     </div>
   </div>
 </div>
@@ -298,7 +298,7 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
           <div><label>訂單公司名稱</label><input id="ord-company" placeholder="公司名稱"></div>
           <div><label>聯絡人</label><input id="ord-contact" placeholder="姓名"></div>
           <div><label>聯絡電話</label><input id="ord-phone" placeholder="電話"></div>
-          <div><label>下訂日期</label><input id="ord-orderdate" type="date"></div>
+          <div><label>下訂日期</label><input id="ord-orderdate" readonly placeholder="選擇日期"></div>
           <div><label>交貨日期</label><input id="ord-due" readonly placeholder="選擇日期"></div>
           <div><label>交貨地點</label><input id="ord-location" placeholder="地址"></div>
           <div style="display:flex;align-items:center;gap:7px;padding-top:18px;">
@@ -379,7 +379,8 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
       </div>
       <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
         <button class="btn btn-success" onclick="previewGoodsNote()">📄 預覽貨單</button>
-        <button class="btn btn-ghost btn-sm" onclick="exportGoodsNoteExcel()">⬇️ 直接下載貨單</button>
+        <button class="btn btn-success btn-sm" onclick="exportGoodsNotePDF()">⬇️ 下載 PDF</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportGoodsNoteExcel()">⬇️ Excel</button>
         <span id="search-count" class="badge b-blue">0 筆</span>
       </div>
       <div id="search-results"></div>
@@ -540,8 +541,9 @@ function loading(v){document.getElementById('loading-overlay').style.display=v?'
 
 // ── DATE PICKERS ───────────────────────────────
 function initDatePickers(){
-  flatpickr('#ord-due',{locale:'zh_tw',dateFormat:'Y-m-d',minDate:'today',maxDate:new Date(Date.now()+14*86400000)});
-  flatpickr('#delivery-date',{locale:'zh_tw',dateFormat:'Y-m-d',minDate:'today'});
+  flatpickr('#ord-orderdate',{locale:'zh_tw',dateFormat:'Y-m-d'});
+  flatpickr('#ord-due',{locale:'zh_tw',dateFormat:'Y-m-d'});
+  flatpickr('#delivery-date',{locale:'zh_tw',dateFormat:'Y-m-d'});
 }
 
 // ── DRAG DROP ──────────────────────────────────
@@ -1131,6 +1133,75 @@ function buildGoodsNoteHTML(sel){
     html+='</tbody></table></div>';
   });
   html+='</div>';return html;
+}
+function exportGoodsNotePDF(){
+  const sel=currentGoodsNoteOrders.length?currentGoodsNoteOrders:getSelectedOrders();
+  if(!sel||!sel.length)return;
+  const printDate=new Date().toLocaleDateString('zh-TW');
+  let body='';
+  sel.forEach(o=>{
+    const ck=v=>v?'☑':'☐';
+    const itemRows=o.items.map(i=>{
+      const d=sortedData.find(r=>r.PartNo===i.PartNo)||{};
+      return `<tr>
+        <td>${i.PartNo}</td>
+        <td>${d.Product||i.Product||''}</td>
+        <td>${d.Material||i.Material||''}</td>
+        <td>${d.Color||i.Color||''}</td>
+        <td style="text-align:center;">${i.Qty}</td>
+        <td style="text-align:center;">${i.Tonnage||''}T</td>
+        <td>${d.Note||''}</td>
+        <td style="text-align:center;">${ck(d.CAPA)}</td>
+        <td style="text-align:center;">${ck(d.NSF)}</td>
+        <td style="text-align:center;">${ck(d.KST)}</td>
+      </tr>`;
+    }).join('');
+    body+=`
+    <div class="order-block">
+      <div class="company-title">昌葳模具有限公司</div>
+      <div class="sub-title">出貨單　列印日期：${printDate}</div>
+      <table class="info-table">
+        <tr><td class="lbl">訂單號碼</td><td>${o.OrderNo}</td><td class="lbl">下訂日期</td><td>${o.OrderDate||''}</td></tr>
+        <tr><td class="lbl">交貨日期</td><td>${o.Due}</td><td class="lbl">緊急</td><td>${o.Urgent?'🚨 是':''}</td></tr>
+        <tr><td class="lbl">客戶公司</td><td>${o.Company||''}</td><td class="lbl">聯絡人</td><td>${o.Contact||''}</td></tr>
+        <tr><td class="lbl">聯絡電話</td><td>${o.Phone||''}</td><td class="lbl">交貨地點</td><td>${o.Location||''}</td></tr>
+        ${o.Note?`<tr><td class="lbl">備注</td><td colspan="3">${o.Note}</td></tr>`:''}
+      </table>
+      <table class="items-table">
+        <thead><tr><th>品號</th><th>產品</th><th>材料</th><th>顏色</th><th>數量</th><th>機台</th><th>備注</th><th>CAPA</th><th>NSF</th><th>KST</th></tr></thead>
+        <tbody>${itemRows}</tbody>
+      </table>
+      <div class="sign-row">
+        <span>簽收：___________________________</span>
+        <span>日期：___________________________</span>
+      </div>
+    </div>`;
+  });
+  const html=`<!DOCTYPE html><html lang="zh-TW"><head>
+  <meta charset="UTF-8">
+  <title>昌葳模具 貨單 ${printDate}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Microsoft JhengHei','蘋方-繁',sans-serif;font-size:12px;color:#000;background:#fff;}
+    .order-block{padding:20px 24px;page-break-after:always;}
+    .order-block:last-child{page-break-after:auto;}
+    .company-title{font-size:20px;font-weight:700;text-align:center;margin-bottom:2px;}
+    .sub-title{font-size:11px;text-align:center;color:#555;margin-bottom:12px;}
+    .info-table{width:100%;border-collapse:collapse;margin-bottom:12px;}
+    .info-table td{padding:4px 8px;border:1px solid #ccc;font-size:12px;}
+    .info-table .lbl{background:#f0f0f0;font-weight:600;width:80px;}
+    .items-table{width:100%;border-collapse:collapse;margin-bottom:14px;}
+    .items-table th{background:#e8e8e8;padding:5px 6px;border:1px solid #bbb;font-size:11px;font-weight:700;}
+    .items-table td{padding:5px 6px;border:1px solid #ccc;font-size:11px;}
+    .sign-row{display:flex;justify-content:space-between;padding-top:16px;border-top:1px solid #ccc;font-size:12px;}
+    @media print{@page{size:A4;margin:10mm;}body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+  </style>
+  </head><body>${body}
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`;
+  const w=window.open('','_blank','width=900,height=700');
+  w.document.write(html);w.document.close();
+  toast(`已開啟 ${sel.length} 張 PDF 貨單，請選擇「另存為 PDF」`,'success');
 }
 function exportGoodsNoteExcel(){
   const sel=currentGoodsNoteOrders.length?currentGoodsNoteOrders:getSelectedOrders();

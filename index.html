@@ -130,6 +130,14 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
 .bnav-item.active,.bnav-item:active{color:var(--ac);}
 .bnav-item span:first-child{font-size:20px;line-height:1;}
 .flatpickr-calendar{background:var(--bgc)!important;border:1px solid var(--bdr)!important;}
+.pn-wrap{position:relative;}
+.pn-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--bgc);border:1px solid var(--ac);border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;z-index:9000;box-shadow:0 8px 24px rgba(0,0,0,.5);display:none;}
+.pn-dropdown.show{display:block;}
+.pn-opt{padding:7px 11px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--bdr);}
+.pn-opt:last-child{border-bottom:none;}
+.pn-opt:hover,.pn-opt.active{background:var(--bgh);}
+.pn-opt strong{color:var(--ac);}
+.pn-opt span{color:var(--tx2);font-size:11px;margin-left:6px;}
 .flatpickr-day{color:var(--tx)!important;}
 .flatpickr-day.selected{background:var(--ac)!important;border-color:var(--ac)!important;color:#000!important;}
 </style>
@@ -793,11 +801,7 @@ function downloadInvExcel(){
 }
 
 // ── ORDERS – DRAFT ─────────────────────────────
-function buildPartNoList(){
-  document.querySelectorAll('[id^="pnl-"]').forEach(dl=>{
-    dl.innerHTML='';sortedData.forEach(r=>{const o=document.createElement('option');o.value=r.PartNo;dl.appendChild(o);});
-  });
-}
+function buildPartNoList(){/* autocomplete now handled by onPnInput */}
 function addDraftItem(){
   orderDraftItems.push({PartNo:'',Qty:1,Tonnage:0,Material:'',Product:'',Color:''});
   renderDraftItems();
@@ -808,16 +812,65 @@ function renderDraftItems(){
   if(!orderDraftItems.length){c.innerHTML='<div style="color:var(--tx2);font-size:12px;text-align:center;padding:12px;">點擊「新增品項」加入模具品號</div>';return;}
   c.innerHTML=orderDraftItems.map((item,i)=>`
     <div class="item-row">
-      <div><input type="text" placeholder="品號…" list="pnl-${i}" value="${item.PartNo}"
-        oninput="orderDraftItems[${i}].PartNo=this.value;syncItemDB(${i})">
-        <datalist id="pnl-${i}"></datalist></div>
+      <div class="pn-wrap">
+        <input type="text" placeholder="輸入品號搜尋…" value="${item.PartNo}"
+          id="pn-input-${i}"
+          oninput="onPnInput(this,${i})"
+          onkeydown="onPnKeydown(event,${i})"
+          onfocus="onPnInput(this,${i})"
+          onblur="setTimeout(()=>hidePnDrop(${i}),200)"
+          autocomplete="off">
+        <div class="pn-dropdown" id="pn-drop-${i}"></div>
+      </div>
       <input type="number" placeholder="數量" value="${item.Qty}" min="1"
         oninput="orderDraftItems[${i}].Qty=Number(this.value)||1">
       <button class="btn btn-danger btn-sm" onclick="removeDraftItem(${i})">✕</button>
     </div>
-    ${item.PartNo&&item.Material?`<div style="font-size:11px;color:var(--tx2);margin-bottom:5px;padding-left:2px;">材料:${item.Material} | ${item.Tonnage}T | 顏色:${item.Color||'-'}</div>`:''}
+    ${item.PartNo&&item.Material?`<div style="font-size:11px;color:var(--tx2);margin-bottom:5px;padding-left:2px;">📦 ${item.Material} | ${item.Tonnage}T${item.Color?' | 🎨'+item.Color:''}${item.Product?' | '+item.Product:''}</div>`:''}
   `).join('');
-  buildPartNoList();
+}
+let pnCursorIdx=-1;
+function onPnInput(el,idx){
+  orderDraftItems[idx].PartNo=el.value;
+  const q=el.value.trim().toLowerCase();
+  const drop=document.getElementById('pn-drop-'+idx);
+  if(!drop)return;
+  if(!q){drop.classList.remove('show');return;}
+  const matches=sortedData.filter(r=>r.PartNo.toLowerCase().includes(q)||
+    (r.Product&&r.Product.toLowerCase().includes(q))||
+    (r.Material&&r.Material.toLowerCase().includes(q))
+  ).slice(0,30);
+  if(!matches.length){drop.classList.remove('show');return;}
+  pnCursorIdx=-1;
+  drop.innerHTML=matches.map(r=>`
+    <div class="pn-opt" onmousedown="selectPn(${idx},'${r.PartNo.replace(/'/g,"\\'")}')">
+      <strong>${highlight(r.PartNo,q)}</strong>
+      <span>${r.Tonnage?r.Tonnage+'T':''} ${r.Material||''} ${r.Color||''} ${r.Product||''}</span>
+    </div>`).join('');
+  drop.classList.add('show');
+}
+function highlight(str,q){
+  if(!q)return str;
+  const re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+  return str.replace(re,'<mark style="background:rgba(88,166,255,.35);color:var(--tx);border-radius:2px;">$1</mark>');
+}
+function selectPn(idx,pn){
+  orderDraftItems[idx].PartNo=pn;
+  const r=sortedData.find(d=>d.PartNo===pn);
+  if(r){orderDraftItems[idx].Tonnage=r.Tonnage;orderDraftItems[idx].Material=r.Material;orderDraftItems[idx].Product=r.Product;orderDraftItems[idx].Color=r.Color;}
+  renderDraftItems();
+  // focus qty of that row
+  setTimeout(()=>{const q=document.querySelectorAll('.item-row input[type=number]')[idx];if(q)q.focus();},50);
+}
+function hidePnDrop(idx){const d=document.getElementById('pn-drop-'+idx);if(d)d.classList.remove('show');}
+function onPnKeydown(e,idx){
+  const drop=document.getElementById('pn-drop-'+idx);
+  if(!drop||!drop.classList.contains('show'))return;
+  const opts=drop.querySelectorAll('.pn-opt');
+  if(e.key==='ArrowDown'){e.preventDefault();pnCursorIdx=Math.min(pnCursorIdx+1,opts.length-1);opts.forEach((o,i)=>o.classList.toggle('active',i===pnCursorIdx));}
+  else if(e.key==='ArrowUp'){e.preventDefault();pnCursorIdx=Math.max(pnCursorIdx-1,0);opts.forEach((o,i)=>o.classList.toggle('active',i===pnCursorIdx));}
+  else if(e.key==='Enter'&&pnCursorIdx>=0){e.preventDefault();opts[pnCursorIdx].dispatchEvent(new MouseEvent('mousedown'));}
+  else if(e.key==='Escape'){hidePnDrop(idx);}
 }
 function syncItemDB(idx){
   const pn=orderDraftItems[idx].PartNo;

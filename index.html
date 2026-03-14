@@ -99,7 +99,36 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
 .sched-item.urgent{border-color:var(--rd);}
 #schedule-list{max-height:380px;overflow-y:auto;}
 .delivery-card{background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:11px;margin-bottom:8px;}
-@media(max-width:768px){#sidebar{transform:translateX(-100%);}#sidebar.open{transform:translateX(0);}#main{margin-left:0;}}
+@media(max-width:768px){
+  #sidebar{transform:translateX(-100%);z-index:200;width:260px;}
+  #sidebar.open{transform:translateX(0);}
+  #sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199;}
+  #sidebar.open~#sidebar-overlay,body.sidebar-open #sidebar-overlay{display:block;}
+  #main{margin-left:0;padding:12px;padding-bottom:70px;}
+  #menu-toggle{display:flex!important;}
+  h1{font-size:17px;}h2{font-size:15px;}
+  .card{padding:12px;margin-bottom:10px;}
+  .btn{padding:9px 12px;font-size:13px;min-height:40px;}
+  .btn-sm{padding:7px 10px;font-size:12px;min-height:36px;}
+  input,select,textarea{padding:9px 11px;font-size:14px;min-height:40px;}
+  .modal{max-width:100%!important;width:100%!important;max-height:92vh;border-radius:12px 12px 0 0;margin-top:auto;}
+  .modal-overlay.open{align-items:flex-end;}
+  .order-card-header{flex-direction:column;align-items:flex-start;}
+  .order-card-header>div:last-child{align-self:flex-end;margin-top:4px;}
+  .db-tbl{font-size:11px;}
+  .db-tbl th,.db-tbl td{padding:5px 5px;}
+  #sorted-preview,#db-table-container,[style*="overflow-x:auto"]{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .gantt-table{font-size:10px;}
+  .search-row{flex-wrap:wrap;gap:6px;}
+  .tab-bar{overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;}
+  .tab-btn{white-space:nowrap;}
+  /* Bottom nav bar */
+  #bottom-nav{display:flex!important;}
+}
+#bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:150;background:var(--bg2);border-top:1px solid var(--bdr);padding:4px 0;justify-content:space-around;}
+.bnav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 8px;cursor:pointer;color:var(--tx2);font-size:9px;border-radius:6px;min-width:48px;transition:color .2s;}
+.bnav-item.active,.bnav-item:active{color:var(--ac);}
+.bnav-item span:first-child{font-size:20px;line-height:1;}
 .flatpickr-calendar{background:var(--bgc)!important;border:1px solid var(--bdr)!important;}
 .flatpickr-day{color:var(--tx)!important;}
 .flatpickr-day.selected{background:var(--ac)!important;border-color:var(--ac)!important;color:#000!important;}
@@ -108,6 +137,16 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
 <body>
 <div id="toast-container"></div>
 <div id="loading-overlay"><div class="spinner"></div></div>
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- Bottom Nav (mobile) -->
+<nav id="bottom-nav">
+  <div class="bnav-item active" onclick="navigate('schedule');setBottomActive(this)"><span>📅</span><span>訂單</span></div>
+  <div class="bnav-item" onclick="navigate('order-search');setBottomActive(this)"><span>🔍</span><span>查詢</span></div>
+  <div class="bnav-item" onclick="navigate('history');setBottomActive(this)"><span>📁</span><span>歷史</span></div>
+  <div class="bnav-item" onclick="navigate('db');setBottomActive(this)"><span>🗄️</span><span>資料庫</span></div>
+  <div class="bnav-item" onclick="document.getElementById('sidebar').classList.toggle('open');document.body.classList.toggle('sidebar-open')"><span>☰</span><span>選單</span></div>
+</nav>
 
 <!-- DB Edit Modal -->
 <div class="modal-overlay" id="modal-db-edit">
@@ -206,6 +245,7 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
     <div class="nav-item" onclick="navigate('schedule')">📅<span>多天生產排程</span></div>
     <div class="nav-item" onclick="navigate('delivery')">🚚<span>每日送貨規劃</span></div>
     <div class="nav-item" onclick="navigate('order-search')">🔍<span>訂單查詢</span></div>
+    <div class="nav-item" onclick="navigate('history')">📁<span>歷史記錄</span></div>
     <div class="nav-item" onclick="navigate('report')">📊<span>報表總覽</span></div>
     <div class="nav-item" onclick="navigate('gsync')">☁️<span>Google Sheets 同步</span>
       <span class="sync-dot disconnected" id="nav-sync-dot" style="margin-left:auto;"></span>
@@ -387,6 +427,17 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
     </div>
   </section>
 
+  <!-- ===== HISTORY ===== -->
+  <section id="section-history" class="section">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+        <h2 style="margin:0;">📁 歷史記錄 <span id="history-count" class="badge b-green">0</span></h2>
+        <input id="history-search" placeholder="搜尋訂單號 / 公司…" style="width:220px;" oninput="renderHistory()">
+      </div>
+      <div id="history-list"></div>
+    </div>
+  </section>
+
   <!-- ===== REPORT ===== -->
   <section id="section-report" class="section">
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px;" id="report-stats"></div>
@@ -439,7 +490,7 @@ const MOLD_CHANGE = {sameMaterial:20,differentMaterial:45,differentTonnageGroup:
 const TONNAGE_GROUPS = [[4,10],[15,20,30],[35,40],[60]];
 
 // ── STATE ──────────────────────────────────────
-let dbData=[], sortedData=[], inventory={}, orders=[], scheduleResult=null;
+let dbData=[], sortedData=[], inventory={}, orders=[], completedOrders=[], scheduleResult=null;
 let gsConnected=false, syncLog=[];
 let autoBackupTimer=null, editingDBIdx=-1;
 let currentGoodsNoteOrders=[];
@@ -454,9 +505,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderOrders();
   renderDraftItems();
   searchOrders();
+  renderHistory();
   renderReport();
   startAutoBackup(30);
-  if(window.innerWidth<768) document.getElementById('menu-toggle').style.display='flex';
 });
 
 async function loadFromStorage(){
@@ -475,12 +526,14 @@ async function loadFromStorage(){
       }else orders=ord;
     }
     const sch=await localforage.getItem('scheduleResult'); if(sch)scheduleResult=sch;
+    const comp=await localforage.getItem('completedOrders'); if(comp)completedOrders=comp;
   }catch(e){console.warn(e);}
 }
 async function saveToStorage(){
   await localforage.setItem('dbData',dbData);
   await localforage.setItem('inventory',inventory);
   await localforage.setItem('orders',orders);
+  await localforage.setItem('completedOrders',completedOrders);
   if(scheduleResult)await localforage.setItem('scheduleResult',scheduleResult);
 }
 
@@ -503,19 +556,23 @@ async function doAutoBackup(){
 function updateBackupBar(msg){const el=document.getElementById('backup-bar');if(el)el.textContent='🔄 '+msg;}
 
 // ── NAVIGATION ─────────────────────────────────
-const NAV_T={db:'資料庫管理',inventory:'庫存管理',schedule:'多天生產排程',delivery:'每日送貨規劃','order-search':'訂單查詢',report:'報表總覽',gsync:'Google Sheets 同步'};
-const NAV_S={db:'上傳 Excel → 排序分組 → 下載',inventory:'管理各品號庫存數量',schedule:'訂單排程 + 甘特圖 + 稼動率',delivery:'依地點分組送貨規劃','order-search':'搜尋訂單 + 輸出貨單',report:'系統資料統計總覽',gsync:'雙向同步資料庫 / 庫存 / 訂單 / 排程'};
+const NAV_T={db:'資料庫管理',inventory:'庫存管理',schedule:'多天生產排程',delivery:'每日送貨規劃','order-search':'訂單查詢',history:'歷史記錄',report:'報表總覽',gsync:'Google Sheets 同步'};
+const NAV_S={db:'上傳 Excel → 排序分組 → 下載',inventory:'管理各品號庫存數量',schedule:'訂單排程 + 甘特圖 + 稼動率',delivery:'依地點分組送貨規劃','order-search':'搜尋訂單 + 輸出貨單',history:'已完成訂單歷史記錄',report:'系統資料統計總覽',gsync:'雙向同步資料庫 / 庫存 / 訂單 / 排程'};
 
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.body.classList.remove('sidebar-open');}
+function setBottomActive(el){document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
 function navigate(page){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  event.currentTarget.classList.add('active');
+  if(event&&event.currentTarget&&event.currentTarget.classList.contains('nav-item'))event.currentTarget.classList.add('active');
   document.getElementById('section-'+page).classList.add('active');
+  closeSidebar();
   document.getElementById('page-title').textContent=NAV_T[page]||page;
   document.getElementById('page-subtitle').textContent=NAV_S[page]||'';
   if(page==='report')renderReport();
   if(page==='schedule'&&scheduleResult)renderGantt(scheduleResult);
   if(page==='order-search')searchOrders();
+  if(page==='history')renderHistory();
   if(page==='gsync')renderSyncLog();
 }
 function switchTab(sec,tab){
@@ -814,6 +871,7 @@ function renderOrders(){
           <span class="badge b-yellow">交貨 ${o.Due}</span>
         </div>
         <div style="display:flex;gap:5px;">
+          <button class="btn btn-success btn-sm" onclick="markOrderComplete('${o.id}')" title="標記完成，移入歷史記錄">✅ 完成</button>
           <button class="btn btn-ghost btn-sm" onclick="openEditOrder('${o.id}')">✏️</button>
           <button class="btn btn-danger btn-sm" onclick="removeOrder(${i})">✕</button>
         </div>
@@ -831,10 +889,69 @@ function renderOrders(){
 function removeOrder(i){orders.splice(i,1);renderOrders();searchOrders();saveToStorage();}
 function clearOrders(){if(!confirm('清除所有訂單？'))return;orders=[];renderOrders();searchOrders();saveToStorage();}
 
+function markOrderComplete(id){
+  const idx=orders.findIndex(o=>String(o.id)===String(id));
+  if(idx===-1)return;
+  const o={...orders[idx],completedAt:new Date().toISOString()};
+  completedOrders.unshift(o);
+  orders.splice(idx,1);
+  renderOrders();searchOrders();renderHistory();saveToStorage();
+  toast('已移入歷史記錄','success');
+}
+function restoreOrder(id){
+  const idx=completedOrders.findIndex(o=>String(o.id)===String(id));
+  if(idx===-1)return;
+  const o={...completedOrders[idx]};
+  delete o.completedAt;
+  orders.push(o);
+  completedOrders.splice(idx,1);
+  renderOrders();searchOrders();renderHistory();saveToStorage();
+  toast('已還原至待排程訂單','info');
+}
+function deleteHistory(id){
+  if(!confirm('確定永久刪除此歷史訂單？'))return;
+  const idx=completedOrders.findIndex(o=>String(o.id)===String(id));
+  if(idx===-1)return;
+  completedOrders.splice(idx,1);
+  renderHistory();saveToStorage();toast('已刪除','info');
+}
+function renderHistory(){
+  const kw=(document.getElementById('history-search')||{}).value||'';
+  const list=kw?completedOrders.filter(o=>(o.OrderNo+o.Company+o.Contact).toLowerCase().includes(kw.toLowerCase())):completedOrders;
+  document.getElementById('history-count').textContent=completedOrders.length;
+  const c=document.getElementById('history-list');if(!c)return;
+  if(!list.length){c.innerHTML='<div style="color:var(--tx2);text-align:center;padding:24px;">尚無歷史記錄</div>';return;}
+  c.innerHTML=list.map(o=>`
+    <div class="order-card" style="border-color:var(--gr);opacity:.9;">
+      <div class="order-card-header">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span class="badge b-green">✅ 已完成</span>
+          <strong style="color:var(--ac);">${o.OrderNo}</strong>
+          ${o.Company?`<span class="badge b-purple">${o.Company}</span>`:''}
+          ${o.OrderDate?`<span class="badge b-orange">📅${o.OrderDate}</span>`:''}
+          <span class="badge b-yellow">交貨 ${o.Due}</span>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="openEditOrder('${o.id}','history')">✏️ 編輯</button>
+          <button class="btn btn-warning btn-sm" onclick="restoreOrder('${o.id}')">↩️ 還原</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteHistory('${o.id}')">✕</button>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--tx2);margin-bottom:4px;">
+        ${o.Contact?`👤${o.Contact} `:''}${o.Phone?`📞${o.Phone} `:''}${o.Location?`📍${o.Location}`:''}
+        <span style="float:right;font-size:11px;">完成：${new Date(o.completedAt).toLocaleString('zh-TW')}</span>
+      </div>
+      ${o.Note?`<div style="font-size:12px;color:var(--yw);margin-bottom:4px;">📝 ${o.Note}</div>`:''}
+      <div style="font-size:12px;">${o.items.map(it=>`<span style="margin-right:8px;"><span style="color:var(--ac);">${it.PartNo}</span>×${it.Qty} <span class="badge b-blue">${it.Tonnage}T</span></span>`).join('')}</div>
+    </div>`).join('');
+}
+
 // ── ORDER EDIT ──────────────────────────────────
-let editOrderId=null,editOrderItems=[];
-function openEditOrder(id){
-  const o=orders.find(x=>String(x.id)===String(id));
+let editOrderId=null,editOrderItems=[],editOrderSource='orders';
+function openEditOrder(id,source='orders'){
+  editOrderSource=source;
+  const pool=source==='history'?completedOrders:orders;
+  const o=pool.find(x=>String(x.id)===String(id));
   if(!o){toast('找不到訂單','error');return;}
   editOrderId=id;
   editOrderItems=JSON.parse(JSON.stringify(o.items||[]));
@@ -870,28 +987,26 @@ function syncEditItem(i){
 function addEditItem(){editOrderItems.push({PartNo:'',Qty:0,Tonnage:0,Material:'',Product:'',Color:''});renderEditItems();}
 function removeEditItem(i){editOrderItems.splice(i,1);renderEditItems();}
 function saveEditOrder(){
-  const idx=orders.findIndex(x=>String(x.id)===String(editOrderId));
+  const pool=editOrderSource==='history'?completedOrders:orders;
+  const idx=pool.findIndex(x=>String(x.id)===String(editOrderId));
   if(idx===-1){toast('找不到訂單','error');return;}
   const valid=editOrderItems.filter(i=>i.PartNo&&i.Qty>0);
   if(!valid.length){toast('請至少填入一個有效品項','warning');return;}
-  valid.forEach(item=>{
-    item.RequiredMachine=MACHINES.find(m=>m>=item.Tonnage)||MACHINES[MACHINES.length-1];
-  });
-  orders[idx]={...orders[idx],
-    OrderNo:document.getElementById('oe-no').value.trim()||orders[idx].OrderNo,
+  valid.forEach(item=>{item.RequiredMachine=MACHINES.find(m=>m>=item.Tonnage)||MACHINES[MACHINES.length-1];});
+  pool[idx]={...pool[idx],
+    OrderNo:document.getElementById('oe-no').value.trim()||pool[idx].OrderNo,
     Company:document.getElementById('oe-company').value.trim(),
     Contact:document.getElementById('oe-contact').value.trim(),
     Phone:document.getElementById('oe-phone').value.trim(),
-    OrderDate:document.getElementById('oe-orderdate').value||orders[idx].OrderDate||'',
-    Due:document.getElementById('oe-due').value||orders[idx].Due,
+    OrderDate:document.getElementById('oe-orderdate').value||pool[idx].OrderDate||'',
+    Due:document.getElementById('oe-due').value||pool[idx].Due,
     Location:document.getElementById('oe-location').value.trim(),
     Note:document.getElementById('oe-note').value.trim(),
     Urgent:document.getElementById('oe-urgent').checked,
-    items:valid,
-    updatedAt:new Date().toISOString()
+    items:valid,updatedAt:new Date().toISOString()
   };
   closeModal('modal-order-edit');
-  renderOrders();searchOrders();renderReport();saveToStorage();
+  renderOrders();searchOrders();renderHistory();renderReport();saveToStorage();
   toast('訂單已更新','success');
 }
 

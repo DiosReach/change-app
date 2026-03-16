@@ -249,11 +249,11 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
   <div id="backup-bar">備份：載入中…</div>
   <nav style="padding:6px 0;">
     <div class="nav-item active" onclick="navigate('db')">🗄️<span>資料庫管理</span></div>
-    <div class="nav-item" onclick="navigate('inventory')">📦<span>庫存管理</span></div>
     <div class="nav-item" onclick="navigate('schedule')">📅<span>多天生產排程</span></div>
     <div class="nav-item" onclick="navigate('delivery')">🚚<span>每日送貨規劃</span></div>
     <div class="nav-item" onclick="navigate('order-search')">🔍<span>訂單查詢</span></div>
     <div class="nav-item" onclick="navigate('history')">📁<span>歷史記錄</span></div>
+    <div class="nav-item" onclick="navigate('held')">📦<span>待出貨</span></div>
     <div class="nav-item" onclick="navigate('report')">📊<span>報表總覽</span></div>
     <div class="nav-item" onclick="navigate('gsync')">☁️<span>Google Sheets 同步</span>
       <span class="sync-dot disconnected" id="nav-sync-dot" style="margin-left:auto;"></span>
@@ -314,20 +314,18 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
     </div>
   </section>
 
-  <!-- ===== INVENTORY ===== -->
-  <section id="section-inventory" class="section">
+  <!-- ===== HELD ORDERS ===== -->
+  <section id="section-held" class="section">
     <div class="card">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
-        <h2 style="margin:0;">庫存管理</h2>
-        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('inv-file').click()">📤 上傳 Excel</button>
-        <input type="file" id="inv-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="loadInvFile(event)">
-        <button class="btn btn-success btn-sm" onclick="addInvRow()">➕ 新增</button>
-        <button class="btn btn-primary btn-sm" onclick="saveInventory()">💾 儲存</button>
-        <button class="btn btn-ghost btn-sm" onclick="downloadInvExcel()">⬇️ 匯出</button>
-        <button class="gs-btn" onclick="gsSyncInventory('push')">☁️↑</button>
-        <button class="gs-btn" onclick="gsSyncInventory('pull')">☁️↓</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+        <h2 style="margin:0;">📦 待出貨 <span id="held-count" class="badge b-orange">0</span></h2>
+        <div style="font-size:12px;color:var(--tx2);">已生產完成但客戶尚未取貨的品項</div>
       </div>
-      <div id="inv-list"></div>
+      <div id="held-list"></div>
+    </div>
+    <div class="card">
+      <h2>📊 待出貨彙總</h2>
+      <div id="held-summary"></div>
     </div>
   </section>
 
@@ -337,17 +335,18 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
       <button class="tab-btn active" onclick="switchTab('schedule','orders')">訂單輸入</button>
       <button class="tab-btn" onclick="switchTab('schedule','gantt')">甘特排程表</button>
       <button class="tab-btn" onclick="switchTab('schedule','machine')">機台稼動率</button>
+      <button class="tab-btn" onclick="switchTab('schedule','config');renderScheduleConfig()">排程設定</button>
     </div>
     <div id="schedule-orders" class="subtab-content active">
       <div class="card">
         <h2>新增訂單</h2>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;">
-          <div><label>訂單號碼</label><input id="ord-no" placeholder="ORD-2026-001"></div>
+          <div><label>訂單號碼 <span style="color:var(--tx2);">(選填)</span></label><input id="ord-no" placeholder="ORD-2026-001"></div>
           <div><label>訂單公司名稱</label><input id="ord-company" placeholder="公司名稱"></div>
           <div><label>聯絡人</label><input id="ord-contact" placeholder="姓名"></div>
           <div><label>聯絡電話</label><input id="ord-phone" placeholder="電話"></div>
           <div><label>下訂日期</label><input id="ord-orderdate" readonly placeholder="選擇日期"></div>
-          <div><label>交貨日期</label><input id="ord-due" readonly placeholder="選擇日期"></div>
+          <div><label>交貨日期 <span style="color:var(--tx2);">(選填)</span></label><input id="ord-due" readonly placeholder="選擇日期"></div>
           <div><label>交貨地點</label><input id="ord-location" placeholder="地址"></div>
           <div style="display:flex;align-items:center;gap:7px;padding-top:18px;">
             <input type="checkbox" id="ord-urgent" style="width:15px;height:15px;">
@@ -394,6 +393,28 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
     </div>
     <div id="schedule-machine" class="subtab-content">
       <div id="machine-util-container"><div style="text-align:center;padding:50px;color:var(--tx2);"><div style="font-size:44px;">🏭</div><div style="margin-top:10px;">排程產生後顯示稼動率</div></div></div>
+    </div>
+    <div id="schedule-config" class="subtab-content">
+      <div class="card">
+        <h2>⚙️ 排程設定</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:16px;">
+          <div><label>上班時間</label><input type="time" id="cfg-work-start" oninput="updateConfigCapPreview()"></div>
+          <div><label>下班時間</label><input type="time" id="cfg-work-end" oninput="updateConfigCapPreview()"></div>
+          <div><label>休息時間（分鐘）</label><input type="number" id="cfg-break-min" min="0" max="240" placeholder="60" oninput="updateConfigCapPreview()"></div>
+          <div style="display:flex;align-items:center;gap:9px;padding-top:20px;">
+            <input type="checkbox" id="cfg-weekend" style="width:16px;height:16px;">
+            <label for="cfg-weekend" style="margin:0;font-size:13px;">允許假日加班排程</label>
+          </div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="margin-bottom:8px;display:block;">啟用機台</label>
+          <div id="cfg-machines" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+        </div>
+        <div style="display:flex;gap:9px;align-items:center;">
+          <button class="btn btn-primary" onclick="saveScheduleConfig()">💾 儲存設定</button>
+          <span id="cfg-daily-cap" style="font-size:12px;color:var(--tx2);"></span>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -481,7 +502,6 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;">
       <div class="card" style="padding:14px;"><h3 style="margin-bottom:10px;">🗄️ 資料庫</h3><div style="display:flex;gap:6px;"><button class="gs-btn" style="flex:1;justify-content:center;" onclick="gsSyncDB('push')">↑ 推送</button><button class="gs-btn" style="flex:1;justify-content:center;" onclick="gsSyncDB('pull')">↓ 拉取</button></div><div style="font-size:11px;color:var(--tx2);margin-top:7px;" id="gs-db-last"></div></div>
-      <div class="card" style="padding:14px;"><h3 style="margin-bottom:10px;">📦 庫存</h3><div style="display:flex;gap:6px;"><button class="gs-btn" style="flex:1;justify-content:center;" onclick="gsSyncInventory('push')">↑ 推送</button><button class="gs-btn" style="flex:1;justify-content:center;" onclick="gsSyncInventory('pull')">↓ 拉取</button></div><div style="font-size:11px;color:var(--tx2);margin-top:7px;" id="gs-inv-last"></div></div>
       <div class="card" style="padding:14px;"><h3 style="margin-bottom:10px;">📋 訂單</h3><div style="display:flex;gap:6px;"><button class="gs-btn" style="flex:1;justify-content:center;" onclick="gsSyncOrders('push')">↑ 推送</button><button class="gs-btn" style="flex:1;justify-content:center;" onclick="gsSyncOrders('pull')">↓ 拉取</button></div><div style="font-size:11px;color:var(--tx2);margin-top:7px;" id="gs-ord-last"></div></div>
       <div class="card" style="padding:14px;"><h3 style="margin-bottom:10px;">📅 排程</h3><div style="display:flex;gap:6px;"><button class="gs-btn" style="flex:1;justify-content:center;" onclick="gsSyncSchedule('push')">↑ 推送</button><button class="gs-btn" style="flex:1;justify-content:center;" onclick="gsSyncSchedule('pull')">↓ 拉取</button></div><div style="font-size:11px;color:var(--tx2);margin-top:7px;" id="gs-sch-last"></div></div>
     </div>
@@ -504,23 +524,24 @@ const MOLD_CHANGE = {sameMaterial:20,differentMaterial:45,differentTonnageGroup:
 const TONNAGE_GROUPS = [[4,10],[15,20,30],[35,40],[60]];
 
 // ── STATE ──────────────────────────────────────
-let dbData=[], sortedData=[], inventory={}, orders=[], completedOrders=[], scheduleResult=null;
+let dbData=[], sortedData=[], orders=[], completedOrders=[], heldOrders=[], scheduleResult=null;
 let gsConnected=false, syncLog=[];
 let autoBackupTimer=null, editingDBIdx=-1;
 let autoSyncDebounceTimer=null, autoSyncIntervalTimer=null;
 let currentGoodsNoteOrders=[];
 let orderDraftItems=[];
+let scheduleConfig={workStart:'08:00',workEnd:'20:00',breakMin:60,weekendOvertime:false,activeMachines:[4,10,15,20,30,35,40,60]};
 
 // ── INIT ───────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   await loadFromStorage();
   initDatePickers();
   buildPartNoList();
-  renderInventory();
   renderOrders();
   renderDraftItems();
   searchOrders();
   renderHistory();
+  renderHeldOrders();
   renderReport();
   startAutoBackup(30);
   // 啟動後台自動同步（不阻塞 UI）
@@ -535,7 +556,6 @@ async function loadFromStorage(){
       dbData=d.map(r=>({...r,CAPA:typeof r.CAPA==='boolean'?r.CAPA:toBool(r.CAPA),NSF:typeof r.NSF==='boolean'?r.NSF:toBool(r.NSF),KST:typeof r.KST==='boolean'?r.KST:toBool(r.KST)}));
       sortedData=dbData;
     }
-    const inv=await localforage.getItem('inventory'); if(inv)inventory=inv;
     const ord=await localforage.getItem('orders');
     if(ord){
       if(ord.length>0 && ord[0].items===undefined){
@@ -544,13 +564,16 @@ async function loadFromStorage(){
     }
     const sch=await localforage.getItem('scheduleResult'); if(sch)scheduleResult=sch;
     const comp=await localforage.getItem('completedOrders'); if(comp)completedOrders=comp;
+    const held=await localforage.getItem('heldOrders'); if(held)heldOrders=held;
+    const sc=await localforage.getItem('scheduleConfig'); if(sc)scheduleConfig={...scheduleConfig,...sc};
   }catch(e){console.warn(e);}
 }
 async function saveToStorage(){
   await localforage.setItem('dbData',dbData);
-  await localforage.setItem('inventory',inventory);
   await localforage.setItem('orders',orders);
   await localforage.setItem('completedOrders',completedOrders);
+  await localforage.setItem('heldOrders',heldOrders);
+  await localforage.setItem('scheduleConfig',scheduleConfig);
   if(scheduleResult)await localforage.setItem('scheduleResult',scheduleResult);
   scheduleAutoSyncPush();
 }
@@ -565,7 +588,7 @@ async function doAutoBackup(){
   try{
     await saveToStorage();
     const key='autoBackup_'+Date.now();
-    await localforage.setItem(key,{dbData,inventory,orders,scheduleResult,at:new Date().toISOString()});
+    await localforage.setItem(key,{dbData,orders,completedOrders,heldOrders,scheduleResult,at:new Date().toISOString()});
     const keys=(await localforage.keys()).filter(k=>k.startsWith('autoBackup_')).sort();
     while(keys.length>5)await localforage.removeItem(keys.shift());
     updateBackupBar(`自動備份 ${nowStr()}`);
@@ -574,8 +597,8 @@ async function doAutoBackup(){
 function updateBackupBar(msg){const el=document.getElementById('backup-bar');if(el)el.textContent='🔄 '+msg;}
 
 // ── NAVIGATION ─────────────────────────────────
-const NAV_T={db:'資料庫管理',inventory:'庫存管理',schedule:'多天生產排程',delivery:'每日送貨規劃','order-search':'訂單查詢',history:'歷史記錄',report:'報表總覽',gsync:'Google Sheets 同步'};
-const NAV_S={db:'上傳 Excel → 排序分組 → 下載',inventory:'管理各品號庫存數量',schedule:'訂單排程 + 甘特圖 + 稼動率',delivery:'依地點分組送貨規劃','order-search':'搜尋訂單 + 輸出貨單',history:'已完成訂單歷史記錄',report:'系統資料統計總覽',gsync:'雙向同步資料庫 / 庫存 / 訂單 / 排程'};
+const NAV_T={db:'資料庫管理',schedule:'多天生產排程',delivery:'每日送貨規劃','order-search':'訂單查詢',history:'歷史記錄',held:'待出貨',report:'報表總覽',gsync:'Google Sheets 同步'};
+const NAV_S={db:'上傳 Excel → 排序分組 → 下載',schedule:'訂單排程 + 甘特圖 + 稼動率 + 排程設定',delivery:'依地點分組送貨規劃','order-search':'搜尋訂單 + 輸出貨單',history:'已完成訂單歷史記錄',held:'已生產尚未出貨品項',report:'系統資料統計總覽',gsync:'雙向同步資料庫 / 訂單 / 排程'};
 
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.body.classList.remove('sidebar-open');}
 function setBottomActive(el){document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
@@ -591,6 +614,7 @@ function navigate(page){
   if(page==='schedule'&&scheduleResult)renderGantt(scheduleResult);
   if(page==='order-search')searchOrders();
   if(page==='history')renderHistory();
+  if(page==='held')renderHeldOrders();
   if(page==='gsync')renderSyncLog();
 }
 function switchTab(sec,tab){
@@ -773,42 +797,6 @@ function deleteDBRow(idx){
 }
 function clearDB(){if(!confirm('確定清除？'))return;dbData=[];sortedData=[];document.getElementById('db-actions').style.display='none';document.getElementById('sorted-section').style.display='none';saveToStorage();toast('已清除','info');}
 
-// ── INVENTORY ──────────────────────────────────
-function loadInvFile(ev){
-  const f=ev.target.files[0];if(!f)return;loading(true);
-  const r=new FileReader();
-  r.onload=e=>{
-    try{
-      const wb=XLSX.read(e.target.result,{type:'binary'});
-      const raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:0});
-      raw.forEach(row=>{const pn=String(row['品號']||row['PartNo']||'');const qty=Number(row['庫存']||row['Qty']||0);if(pn)inventory[pn]=qty;});
-      renderInventory();saveToStorage();toast(`載入 ${raw.length} 筆`,'success');
-    }catch(e){toast('失敗','error');}loading(false);
-  };r.readAsBinaryString(f);
-}
-function addInvRow(p='',q=0){
-  const el=document.createElement('div');
-  el.style.cssText='display:grid;grid-template-columns:1fr 1fr auto;gap:7px;margin-bottom:5px;';
-  el.innerHTML=`<input type="text" placeholder="品號" value="${p}"><input type="number" placeholder="庫存" value="${q}" min="0"><button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">✕</button>`;
-  document.getElementById('inv-list').appendChild(el);
-}
-function renderInventory(){
-  const l=document.getElementById('inv-list');l.innerHTML='';
-  const keys=Object.keys(inventory);
-  if(!keys.length){l.innerHTML='<div style="color:var(--tx2);text-align:center;padding:18px;">尚無庫存資料</div>';return;}
-  keys.forEach(pn=>addInvRow(pn,inventory[pn]));
-}
-function saveInventory(){
-  inventory={};
-  document.querySelectorAll('#inv-list > div').forEach(row=>{
-    const ins=row.querySelectorAll('input');const pn=ins[0].value.trim();const qty=Number(ins[1].value)||0;
-    if(pn)inventory[pn]=qty;
-  });saveToStorage();toast('庫存已儲存','success');
-}
-function downloadInvExcel(){
-  const rows=[['品號','庫存數量']];Object.entries(inventory).forEach(([k,v])=>rows.push([k,v]));
-  const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'庫存');XLSX.writeFile(wb,`昌葳_庫存_${today()}.xlsx`);toast('已下載','success');
-}
 
 // ── ORDERS – DRAFT ─────────────────────────────
 function buildPartNoList(){/* autocomplete now handled by onPnInput */}
@@ -892,7 +880,6 @@ function submitOrder(){
   const no=document.getElementById('ord-no').value.trim();
   const due=document.getElementById('ord-due').value;
   if(!orderDraftItems.length){toast('請先新增品項','warning');return;}
-  if(!due){toast('請選擇交貨日期','warning');return;}
   const valid=orderDraftItems.filter(i=>i.PartNo&&i.Qty>0);
   if(!valid.length){toast('請填入有效品號與數量','warning');return;}
   valid.forEach(item=>{
@@ -933,8 +920,9 @@ function renderOrders(){
           ${o.OrderDate?`<span class="badge b-orange">📅下訂 ${o.OrderDate}</span>`:''}
           <span class="badge b-yellow">交貨 ${o.Due}</span>
         </div>
-        <div style="display:flex;gap:5px;">
+        <div style="display:flex;gap:5px;flex-wrap:wrap;">
           <button class="btn btn-success btn-sm" onclick="markOrderComplete('${o.id}')" title="標記完成，移入歷史記錄">✅ 完成</button>
+          <button class="btn btn-warning btn-sm" onclick="markOrderHeld('${o.id}')" title="已生產，等待出貨">📦 已生產</button>
           <button class="btn btn-ghost btn-sm" onclick="openEditOrder('${o.id}')">✏️</button>
           <button class="btn btn-danger btn-sm" onclick="removeOrder(${i})">✕</button>
         </div>
@@ -1013,7 +1001,7 @@ function renderHistory(){
 let editOrderId=null,editOrderItems=[],editOrderSource='orders';
 function openEditOrder(id,source='orders'){
   editOrderSource=source;
-  const pool=source==='history'?completedOrders:orders;
+  const pool=source==='history'?completedOrders:source==='held'?heldOrders:orders;
   const o=pool.find(x=>String(x.id)===String(id));
   if(!o){toast('找不到訂單','error');return;}
   editOrderId=id;
@@ -1050,7 +1038,7 @@ function syncEditItem(i){
 function addEditItem(){editOrderItems.push({PartNo:'',Qty:0,Tonnage:0,Material:'',Product:'',Color:''});renderEditItems();}
 function removeEditItem(i){editOrderItems.splice(i,1);renderEditItems();}
 function saveEditOrder(){
-  const pool=editOrderSource==='history'?completedOrders:orders;
+  const pool=editOrderSource==='history'?completedOrders:editOrderSource==='held'?heldOrders:orders;
   const idx=pool.findIndex(x=>String(x.id)===String(editOrderId));
   if(idx===-1){toast('找不到訂單','error');return;}
   const valid=editOrderItems.filter(i=>i.PartNo&&i.Qty>0);
@@ -1069,7 +1057,7 @@ function saveEditOrder(){
     items:valid,updatedAt:new Date().toISOString()
   };
   closeModal('modal-order-edit');
-  renderOrders();searchOrders();renderHistory();renderReport();saveToStorage();
+  renderOrders();searchOrders();renderHistory();renderHeldOrders();renderReport();saveToStorage();
   toast('訂單已更新','success');
 }
 
@@ -1092,11 +1080,18 @@ function generateSchedule(){
       });
       const startD=new Date();startD.setHours(0,0,0,0);
       const days=14;
-      const horizon=Array.from({length:days},(_,i)=>{const d=new Date(startD);d.setDate(d.getDate()+i);return dateStr(d);});
-      const ms={};MACHINES.forEach(m=>{ms[m]={lastMaterial:null,lastTonnage:null,jobs:[]};});
+      // Build horizon skipping weekends unless weekendOvertime is on
+      const horizon=[];let di=0;while(horizon.length<days){const d=new Date(startD);d.setDate(d.getDate()+di);di++;const dow=d.getDay();if(!scheduleConfig.weekendOvertime&&(dow===0||dow===6))continue;horizon.push(dateStr(d));}
+      // dailyCap from scheduleConfig
+      const [sh,sm]=scheduleConfig.workStart.split(':').map(Number);
+      const [eh,em]=scheduleConfig.workEnd.split(':').map(Number);
+      const workSecs=((eh*60+em)-(sh*60+sm)-scheduleConfig.breakMin)*60;
+      const configDailyCap=Math.max(1,Math.floor(workSecs/(CYCLE_TIME_BASE+COOLING_TIME)));
+      const activeMachineList=scheduleConfig.activeMachines||MACHINES;
+      const ms={};activeMachineList.forEach(m=>{ms[m]={lastMaterial:null,lastTonnage:null,jobs:[]};});
       const alerts=[],unscheduled=[];
       sorted.forEach(order=>{
-        const elig=MACHINES.filter(m=>m>=order.RequiredMachine);
+        const elig=activeMachineList.filter(m=>m>=order.RequiredMachine);
         if(!elig.length){unscheduled.push(order);return;}
         let best=null,bestScore=Infinity;
         elig.forEach(m=>{
@@ -1110,27 +1105,24 @@ function generateSchedule(){
         if(!best){unscheduled.push(order);return;}
         const st=ms[best];let mc=0;
         if(st.lastMaterial!==null){if(st.lastMaterial===order.Material)mc=MOLD_CHANGE.sameMaterial;else{const lg=TONNAGE_GROUPS.findIndex(g=>g.includes(st.lastTonnage));const cg=TONNAGE_GROUPS.findIndex(g=>g.includes(order.Tonnage));mc=(lg!==cg)?MOLD_CHANGE.differentTonnageGroup:MOLD_CHANGE.differentMaterial;}}
-        const dailyCap=Math.floor((86400*0.85)/(CYCLE_TIME_BASE+COOLING_TIME));
-        const daysN=Math.ceil(order.Qty/dailyCap);
+        const daysN=Math.ceil(order.Qty/configDailyCap);
         let si=0;if(st.jobs.length>0){const lj=st.jobs[st.jobs.length-1];si=Math.min(lj.endIdx+1,days-1);}
         const ei=Math.min(si+daysN-1,days-1);
-        const di=horizon.indexOf(order.Due);
-        if(di>=0&&ei>di)alerts.push({type:'warning',msg:`${order.PartNo} 可能無法在 ${order.Due} 前完成`});
-        const shortage=order.Qty-(inventory[order.PartNo]||0);
+        const dueIdx=horizon.indexOf(order.Due);
+        if(dueIdx>=0&&ei>dueIdx)alerts.push({type:'warning',msg:`${order.PartNo} 可能無法在 ${order.Due} 前完成`});
         if(st.jobs.filter(j=>j.material!==order.Material).length>=5)alerts.push({type:'warning',msg:`機台 ${best}T 換模次數過多`});
-        st.jobs.push({OrderNo:order.OrderNo,PartNo:order.PartNo,Material:order.Material,Tonnage:order.Tonnage,Qty:order.Qty,startDate:horizon[si]||horizon[0],endDate:horizon[ei]||horizon[days-1],startIdx:si,endIdx:ei,moldChangeMin:mc,dailyPcs:dailyCap,urgent:order.Urgent,shortage:shortage>0?shortage:0,location:order.Location,Due:order.Due,material:order.Material,company:order.Company});
+        st.jobs.push({OrderNo:order.OrderNo,PartNo:order.PartNo,Material:order.Material,Tonnage:order.Tonnage,Qty:order.Qty,startDate:horizon[si]||horizon[0],endDate:horizon[ei]||horizon[days-1],startIdx:si,endIdx:ei,moldChangeMin:mc,dailyPcs:configDailyCap,urgent:order.Urgent,location:order.Location,Due:order.Due,material:order.Material,company:order.Company});
         st.lastMaterial=order.Material;st.lastTonnage=order.Tonnage;
       });
-      MACHINES.forEach(m=>{const st=ms[m];const used=new Set();st.jobs.forEach(j=>{for(let d=j.startIdx;d<=j.endIdx;d++)used.add(d);});st.utilization=used.size/days;if(st.utilization>0.95)alerts.push({type:'error',msg:`機台 ${m}T 稼動率 ${Math.round(st.utilization*100)}% 過高`});});
-      scheduleResult={horizon,machineSchedule:ms,orders:sorted,alerts,unscheduled};
+      activeMachineList.forEach(m=>{const st=ms[m];const used=new Set();st.jobs.forEach(j=>{for(let d=j.startIdx;d<=j.endIdx;d++)used.add(d);});st.utilization=used.size/days;if(st.utilization>0.95)alerts.push({type:'error',msg:`機台 ${m}T 稼動率 ${Math.round(st.utilization*100)}% 過高`});});
+      scheduleResult={horizon,machineSchedule:ms,activeMachines:activeMachineList,orders:sorted,alerts,unscheduled};
       saveToStorage();
       document.querySelectorAll('#section-schedule .tab-btn').forEach(b=>b.classList.remove('active'));
       document.querySelectorAll('#section-schedule .subtab-content').forEach(c=>c.classList.remove('active'));
       document.querySelectorAll('#section-schedule .tab-btn')[1].classList.add('active');
       document.getElementById('schedule-gantt').classList.add('active');
       renderGantt(scheduleResult);renderMachineUtil(scheduleResult);renderAlerts(alerts);
-      sorted.forEach(o=>{if(inventory[o.PartNo]!==undefined)inventory[o.PartNo]=Math.max(0,(inventory[o.PartNo]||0)-o.Qty);});
-      saveToStorage();toast(`排程完成！${sorted.length} 品項`,'success');if(alerts.length)toast(`⚠️ ${alerts.length} 警示`,'warning');
+      toast(`排程完成！${sorted.length} 品項`,'success');if(alerts.length)toast(`⚠️ ${alerts.length} 警示`,'warning');
     }catch(e){toast('排程失敗：'+e.message,'error');}loading(false);
   },300);
 }
@@ -1141,10 +1133,11 @@ function renderGantt(result){
   document.getElementById('schedule-date-range').textContent=`${result.horizon[0]} ~ ${result.horizon[result.horizon.length-1]}`;
   const colors=['#1a3a5c','#1a3a2a','#3a2a0a','#2a1a3a','#1a2a1a','#3a1a2a','#1a1a3a','#2a3a1a'];
   const mc={};let ci=0;const dn=['日','一','二','三','四','五','六'];
+  const machineList=result.activeMachines||MACHINES;
   let html=`<div style="overflow-x:auto;"><table class="gantt-table"><thead><tr><th>機台</th><th>品項</th>`;
-  result.horizon.forEach(d=>{const day=new Date(d);html+=`<th>${d.slice(5)}<br><small>${dn[day.getDay()]}</small></th>`;});
+  result.horizon.forEach(d=>{const day=new Date(d);const isWknd=day.getDay()===0||day.getDay()===6;html+=`<th style="${isWknd?'background:rgba(255,100,100,.15);':''}">${d.slice(5)}<br><small>${dn[day.getDay()]}</small></th>`;});
   html+='</tr></thead><tbody>';
-  MACHINES.forEach(m=>{
+  machineList.forEach(m=>{
     const st=result.machineSchedule[m];
     if(!st.jobs.length){html+=`<tr><td style="font-weight:700;color:var(--ac);">${m}T</td><td colspan="${result.horizon.length+1}" style="color:var(--tx2);">無排程</td></tr>`;return;}
     st.jobs.forEach((job,ji)=>{
@@ -1152,7 +1145,7 @@ function renderGantt(result){
       const bg=mc[job.Material];
       html+=`<tr>`;
       if(ji===0)html+=`<td rowspan="${st.jobs.length}" style="font-weight:700;color:var(--ac);text-align:center;">${m}T<br><small style="color:${(st.utilization||0)>0.95?'var(--rd)':(st.utilization||0)>0.8?'var(--yw)':'var(--gr)'}">${Math.round((st.utilization||0)*100)}%</small></td>`;
-      html+=`<td style="font-size:11px;">${job.urgent?'🚨':''}<strong>${job.PartNo}</strong><br><span style="color:var(--tx2);">${job.Material}</span>${job.shortage>0?`<br><span style="color:var(--rd);">缺${job.shortage}</span>`:''}</td>`;
+      html+=`<td style="font-size:11px;">${job.urgent?'🚨':''}<strong>${job.PartNo}</strong><br><span style="color:var(--tx2);">${job.Material}</span></td>`;
       result.horizon.forEach((_,di)=>{
         if(di>=job.startIdx&&di<=job.endIdx){const pct=job.endIdx>job.startIdx?Math.round((di-job.startIdx+1)/(job.endIdx-job.startIdx+1)*100):100;html+=`<td style="background:${bg};border:1px solid rgba(255,255,255,.1);"><div style="font-size:10px;color:rgba(255,255,255,.9);">${pct}%</div></td>`;}else html+='<td></td>';
       });html+='</tr>';
@@ -1165,8 +1158,9 @@ function renderGantt(result){
 
 function renderMachineUtil(result){
   const c=document.getElementById('machine-util-container');
+  const machineList=result.activeMachines||MACHINES;
   let html='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">';
-  MACHINES.forEach(m=>{
+  machineList.forEach(m=>{
     const st=result.machineSchedule[m];const util=st.utilization||0;const pct=Math.round(util*100);
     const color=util>0.95?'var(--rd)':util>0.8?'var(--yw)':'var(--gr)';
     html+=`<div class="stat-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><h3>機台 ${m}T</h3><span style="font-size:13px;font-weight:700;color:${color};">${pct}%</span></div>
@@ -1187,11 +1181,13 @@ function renderAlerts(alerts){
 function exportScheduleExcel(){
   if(!scheduleResult){toast('尚無排程','warning');return;}
   const wb=XLSX.utils.book_new();
-  const rows=[['機台','訂單號','品號','材料','數量','開始','結束','換模min','日產能','缺料','緊急']];
-  MACHINES.forEach(m=>{scheduleResult.machineSchedule[m].jobs.forEach(j=>{rows.push([m,j.OrderNo||'',j.PartNo,j.Material,j.Qty,j.startDate,j.endDate,j.moldChangeMin,j.dailyPcs,j.shortage,j.urgent?'是':'否']);});});
+  const rows=[['機台','訂單號','品號','材料','數量','開始','結束','換模min','日產能','緊急']];
+  const machList=scheduleResult.activeMachines||MACHINES;
+  machList.forEach(m=>{if(scheduleResult.machineSchedule[m])scheduleResult.machineSchedule[m].jobs.forEach(j=>{rows.push([m,j.OrderNo||'',j.PartNo,j.Material,j.Qty,j.startDate,j.endDate,j.moldChangeMin,j.dailyPcs,j.urgent?'是':'否']);});});
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'機台排程');
-  const daily=[['日期',...MACHINES.map(m=>`機台${m}T`)]];
-  scheduleResult.horizon.forEach((date,di)=>{const row=[date];MACHINES.forEach(m=>{const active=scheduleResult.machineSchedule[m].jobs.filter(j=>di>=j.startIdx&&di<=j.endIdx);row.push(active.map(j=>j.PartNo).join(',')||'-');});daily.push(row);});
+  const machList2=scheduleResult.activeMachines||MACHINES;
+  const daily=[['日期',...machList2.map(m=>`機台${m}T`)]];
+  scheduleResult.horizon.forEach((date,di)=>{const row=[date];machList2.forEach(m=>{const st=scheduleResult.machineSchedule[m];const active=st?st.jobs.filter(j=>di>=j.startIdx&&di<=j.endIdx):[];row.push(active.map(j=>j.PartNo).join(',')||'-');});daily.push(row);});
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(daily),'每日甘特');
   XLSX.writeFile(wb,`昌葳_排程_${today()}.xlsx`);toast('已下載排程 Excel','success');
 }
@@ -1409,15 +1405,16 @@ function exportGoodsNoteExcel(){
 // ── REPORT ─────────────────────────────────────
 function renderReport(){
   const tP=sortedData.length,tO=orders.length,urg=orders.filter(o=>o.Urgent).length;
-  const tI=Object.values(inventory).reduce((s,v)=>s+v,0);
-  const mU=scheduleResult?MACHINES.filter(m=>scheduleResult.machineSchedule[m].jobs.length>0).length:0;
+  const tH=heldOrders.length;
+  const machList=scheduleResult?(scheduleResult.activeMachines||MACHINES):MACHINES;
+  const mU=scheduleResult?machList.filter(m=>scheduleResult.machineSchedule[m]&&scheduleResult.machineSchedule[m].jobs.length>0).length:0;
   const latestOrder=orders.length?orders.reduce((a,b)=>((b.updatedAt||b.createdAt||'')>(a.updatedAt||a.createdAt||''))?b:a,orders[0]):null;
   const latestTime=latestOrder?(latestOrder.updatedAt||latestOrder.createdAt):null;
   const latestStr=latestTime?new Date(latestTime).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
   document.getElementById('report-stats').innerHTML=[
     {n:tP,l:'資料庫品項',c:'var(--ac)'},{n:tO,l:'待排程訂單',c:'var(--gr)'},
-    {n:urg,l:'緊急訂單',c:'var(--rd)'},{n:tI.toLocaleString(),l:'總庫存',c:'var(--pu)'},
-    {n:`${mU}/8`,l:'使用機台',c:'var(--or)'},
+    {n:urg,l:'緊急訂單',c:'var(--rd)'},{n:tH,l:'待出貨訂單',c:'var(--or)'},
+    {n:`${mU}/${machList.length}`,l:'使用機台',c:'var(--pu)'},
     {n:latestStr,l:'最近更新訂單',c:'var(--pu)',small:true}
   ].map(s=>`<div class="stat-card"><div class="${s.small?'':'stat-num'}" style="color:${s.c};font-size:${s.small?'14px':'26px'};font-weight:700;margin-bottom:3px;">${s.n}</div><div class="stat-lbl">${s.l}</div></div>`).join('');
   const mg={};sortedData.forEach(r=>{const m=r.Material||'未知';mg[m]=(mg[m]||0)+1;});
@@ -1428,7 +1425,7 @@ function renderReport(){
 
 // ── BACKUP ─────────────────────────────────────
 async function exportBackup(){
-  const b={dbData,inventory,orders,scheduleResult,exportedAt:new Date().toISOString()};
+  const b={dbData,orders,completedOrders,heldOrders,scheduleResult,scheduleConfig,exportedAt:new Date().toISOString()};
   const blob=new Blob([JSON.stringify(b,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`昌葳備份_${today()}.json`;a.click();
   toast('已匯出備份','success');
@@ -1439,14 +1436,18 @@ function importBackup(ev){
     try{
       const b=JSON.parse(e.target.result);
       if(b.dbData){dbData=b.dbData;sortedData=b.dbData;}
-      if(b.inventory)inventory=b.inventory;if(b.orders)orders=b.orders;if(b.scheduleResult)scheduleResult=b.scheduleResult;
-      await saveToStorage();renderInventory();renderOrders();buildPartNoList();searchOrders();
+      if(b.orders)orders=b.orders;
+      if(b.completedOrders)completedOrders=b.completedOrders;
+      if(b.heldOrders)heldOrders=b.heldOrders;
+      if(b.scheduleResult)scheduleResult=b.scheduleResult;
+      if(b.scheduleConfig)scheduleConfig={...scheduleConfig,...b.scheduleConfig};
+      await saveToStorage();renderOrders();buildPartNoList();searchOrders();renderHistory();renderHeldOrders();
       toast('備份已還原','success');
     }catch(e){toast('還原失敗：'+e.message,'error');}
   };r.readAsText(f);ev.target.value='';
 }
 async function clearTodayData(){
-  if(!confirm('清除今日排程和訂單？（資料庫和庫存保留）'))return;
+  if(!confirm('清除今日排程和訂單？（資料庫保留）'))return;
   orders=[];scheduleResult=null;await localforage.removeItem('orders');await localforage.removeItem('scheduleResult');
   renderOrders();document.getElementById('gantt-container').innerHTML='<div style="text-align:center;padding:50px;color:var(--tx2);">排程已清除</div>';
   toast('已清除','info');
@@ -1500,26 +1501,36 @@ async function gsSyncDB(dir){
   }catch(e){addSyncLog('失敗：'+e.message,'err');toast('失敗：'+e.message,'error');}
   setGsDot(gsConnected?'connected':'disconnected');
 }
-async function gsSyncInventory(dir){
-  addSyncLog(`庫存 ${dir==='push'?'↑':'↓'}…`,'info');setGsDot('syncing');
-  try{
-    if(dir==='push'){const data=Object.entries(inventory).map(([品號,庫存])=>({品號,庫存}));if(!data.length)throw new Error('庫存為空');const res=await gsPost({action:'write',sheet:'Inventory',data});addSyncLog(`推送 ${res.written} 筆`,'ok');toast(`推送 ${res.written} 筆`,'success');}
-    else{const res=await gsGet({action:'read',sheet:'Inventory'});if(res.error)throw new Error(res.error);inventory={};(res.data||[]).forEach(r=>{const pn=String(r['品號']||r['PartNo']||'').trim();const qty=Number(r['庫存']||r['Qty']||0);if(pn)inventory[pn]=qty;});await saveToStorage();renderInventory();addSyncLog(`拉取 ${Object.keys(inventory).length} 筆`,'ok');toast('庫存更新','success');}
-  }catch(e){addSyncLog('失敗：'+e.message,'err');toast('失敗：'+e.message,'error');}
-  setGsDot(gsConnected?'connected':'disconnected');
-}
 async function gsSyncOrders(dir){
   addSyncLog(`訂單 ${dir==='push'?'↑':'↓'}…`,'info');setGsDot('syncing');
   try{
-    if(dir==='push'){if(!orders.length)throw new Error('無訂單');const data=orders.flatMap(o=>o.items.map(i=>({訂單號:o.OrderNo,公司:o.Company,聯絡人:o.Contact,電話:o.Phone,交貨日:o.Due,地點:o.Location,緊急:o.Urgent?'是':'否',品號:i.PartNo,數量:i.Qty,機台:i.Tonnage,材料:i.Material})));const res=await gsPost({action:'write',sheet:'Orders',data});addSyncLog(`推送 ${res.written} 筆`,'ok');toast(`推送 ${res.written} 筆`,'success');}
-    else{const res=await gsGet({action:'read',sheet:'Orders'});if(res.error)throw new Error(res.error);addSyncLog(`拉取 ${(res.data||[]).length} 筆`,'ok');toast('訂單拉取完成','info');}
+    if(dir==='push'){
+      await gsPost({action:'writejson',sheet:'OrdersJSON',data:orders});
+      await gsPost({action:'writejson',sheet:'CompletedJSON',data:completedOrders});
+      await gsPost({action:'writejson',sheet:'HeldJSON',data:heldOrders});
+      addSyncLog(`推送 訂單${orders.length} / 歷史${completedOrders.length} / 待出貨${heldOrders.length}`,'ok');
+      toast('訂單推送完成','success');
+      if(document.getElementById('gs-ord-last'))document.getElementById('gs-ord-last').textContent=`推送 ${nowStr()}`;
+    }else{
+      const [ordRes,compRes,heldRes]=await Promise.all([
+        gsGet({action:'readjson',sheet:'OrdersJSON'}),
+        gsGet({action:'readjson',sheet:'CompletedJSON'}),
+        gsGet({action:'readjson',sheet:'HeldJSON'})
+      ]);
+      if(ordRes.data&&Array.isArray(ordRes.data)){orders=ordRes.data;await localforage.setItem('orders',orders);}
+      if(compRes.data&&Array.isArray(compRes.data)){completedOrders=compRes.data;await localforage.setItem('completedOrders',completedOrders);}
+      if(heldRes.data&&Array.isArray(heldRes.data)){heldOrders=heldRes.data;await localforage.setItem('heldOrders',heldOrders);}
+      renderOrders();searchOrders();renderHistory();renderHeldOrders();renderReport();
+      addSyncLog(`拉取 訂單${orders.length} / 歷史${completedOrders.length} / 待出貨${heldOrders.length}`,'ok');
+      toast('訂單拉取完成','success');
+    }
   }catch(e){addSyncLog('失敗：'+e.message,'err');toast('失敗：'+e.message,'error');}
   setGsDot(gsConnected?'connected':'disconnected');
 }
 async function gsSyncSchedule(dir){
   addSyncLog(`排程 ${dir==='push'?'↑':'↓'}…`,'info');setGsDot('syncing');
   try{
-    if(dir==='push'){if(!scheduleResult)throw new Error('尚無排程');const rows=[];MACHINES.forEach(m=>{scheduleResult.machineSchedule[m].jobs.forEach(j=>{rows.push({機台:m,訂單號:j.OrderNo||'',品號:j.PartNo,材料:j.Material,數量:j.Qty,開始:j.startDate,結束:j.endDate,換模min:j.moldChangeMin,日產能:j.dailyPcs,缺料:j.shortage||0,緊急:j.urgent?'是':'否'});});});if(!rows.length)throw new Error('排程為空');const res=await gsPost({action:'write',sheet:'Schedule',data:rows});addSyncLog(`推送 ${res.written} 筆`,'ok');toast('排程推送完成','success');}
+    if(dir==='push'){if(!scheduleResult)throw new Error('尚無排程');const rows=[];const ml=scheduleResult.activeMachines||MACHINES;ml.forEach(m=>{if(scheduleResult.machineSchedule[m])scheduleResult.machineSchedule[m].jobs.forEach(j=>{rows.push({機台:m,訂單號:j.OrderNo||'',品號:j.PartNo,材料:j.Material,數量:j.Qty,開始:j.startDate,結束:j.endDate,換模min:j.moldChangeMin,日產能:j.dailyPcs,緊急:j.urgent?'是':'否'});});});if(!rows.length)throw new Error('排程為空');const res=await gsPost({action:'write',sheet:'Schedule',data:rows});addSyncLog(`推送 ${res.written} 筆`,'ok');toast('排程推送完成','success');}
     else{const res=await gsGet({action:'read',sheet:'Schedule'});if(res.error)throw new Error(res.error);addSyncLog(`拉取 ${(res.data||[]).length} 筆`,'ok');toast('排程拉取完成','info');}
   }catch(e){addSyncLog('失敗：'+e.message,'err');toast('失敗：'+e.message,'error');}
   setGsDot(gsConnected?'connected':'disconnected');
@@ -1528,7 +1539,6 @@ async function syncAll(){
   if(!gsConnected){const ok=confirm('尚未測試連線，先測試？');if(ok){await testGsConnection();if(!gsConnected)return;}else return;}
   toast('開始全部同步…','info');
   if(sortedData.length)await gsSyncDB('push');
-  if(Object.keys(inventory).length)await gsSyncInventory('push');
   if(orders.length)await gsSyncOrders('push');
   if(scheduleResult)await gsSyncSchedule('push');
   toast('✅ 全部同步完成','success');addSyncLog('=== 全部同步完成 ===','ok');
@@ -1561,36 +1571,36 @@ async function autoSyncPull(){
       dbData=dbRes.data.map(normalizeRow);sortedData=[...dbData];
       await localforage.setItem('dbData',dbData);
       buildPartNoList();
-      if(document.getElementById('db-actions').style.display!=='none')renderDBTable(sortedData);
-      document.getElementById('db-count').textContent=`共 ${dbData.length} 筆`;
-      document.getElementById('db-actions').style.display='block';
       addSyncLog(`↓ 資料庫 ${dbData.length} 筆`,'ok');
     }
     // 拉取訂單（JSON blob）
     const ordRes=await gsGet({action:'readjson',sheet:'OrdersJSON'});
-    if(ordRes.data&&Array.isArray(ordRes.data)&&ordRes.data.length>0){
+    if(ordRes.data&&Array.isArray(ordRes.data)){
       orders=ordRes.data;
       await localforage.setItem('orders',orders);
-      renderOrders();searchOrders();
       addSyncLog(`↓ 訂單 ${orders.length} 筆`,'ok');
     }
     // 拉取歷史記錄（JSON blob）
     const compRes=await gsGet({action:'readjson',sheet:'CompletedJSON'});
-    if(compRes.data&&Array.isArray(compRes.data)&&compRes.data.length>0){
+    if(compRes.data&&Array.isArray(compRes.data)){
       completedOrders=compRes.data;
       await localforage.setItem('completedOrders',completedOrders);
-      renderHistory();
       addSyncLog(`↓ 歷史記錄 ${completedOrders.length} 筆`,'ok');
     }
-    // 拉取庫存
-    const invRes=await gsGet({action:'read',sheet:'Inventory'});
-    if(invRes.data&&invRes.data.length>0){
-      inventory={};invRes.data.forEach(r=>{const pn=String(r['品號']||r['PartNo']||'').trim();const qty=Number(r['庫存']||r['Qty']||0);if(pn)inventory[pn]=qty;});
-      await localforage.setItem('inventory',inventory);
-      renderInventory();
-      addSyncLog(`↓ 庫存 ${Object.keys(inventory).length} 筆`,'ok');
+    // 拉取待出貨（JSON blob）
+    const heldRes=await gsGet({action:'readjson',sheet:'HeldJSON'});
+    if(heldRes.data&&Array.isArray(heldRes.data)){
+      heldOrders=heldRes.data;
+      await localforage.setItem('heldOrders',heldOrders);
+      addSyncLog(`↓ 待出貨 ${heldOrders.length} 筆`,'ok');
     }
-    renderReport();
+    // 一律重新渲染所有頁面
+    if(dbData.length){
+      renderDBTable(sortedData);
+      document.getElementById('db-count').textContent=`共 ${dbData.length} 筆`;
+      document.getElementById('db-actions').style.display='block';
+    }
+    renderOrders();searchOrders();renderHistory();renderHeldOrders();renderReport();
     updateBackupBar(`GSheets 拉取 ${nowStr()}`);
   }catch(e){addSyncLog('拉取失敗：'+e.message,'err');}
 }
@@ -1607,8 +1617,7 @@ async function autoSyncPushSilent(){
     if(sortedData.length)ps.push(gsPost({action:'write',sheet:'Database',data:sortedData}));
     ps.push(gsPost({action:'writejson',sheet:'OrdersJSON',data:orders}));
     ps.push(gsPost({action:'writejson',sheet:'CompletedJSON',data:completedOrders}));
-    const invData=Object.entries(inventory).map(([品號,庫存])=>({品號,庫存}));
-    if(invData.length)ps.push(gsPost({action:'write',sheet:'Inventory',data:invData}));
+    ps.push(gsPost({action:'writejson',sheet:'HeldJSON',data:heldOrders}));
     await Promise.all(ps);
     setGsDot('connected');
     updateBackupBar(`自動同步 ${nowStr()}`);
@@ -1689,6 +1698,118 @@ function jsonR(obj) {
 
 function showAppsScriptCode(){document.getElementById('apps-script-code-display').textContent=APPS_SCRIPT_CODE;document.getElementById('modal-appsscript').classList.add('open');}
 function copyAppsScriptCode(){navigator.clipboard.writeText(APPS_SCRIPT_CODE).then(()=>toast('已複製','success')).catch(()=>toast('請手動複製','warning'));}
+
+// ── HELD ORDERS ────────────────────────────────
+function markOrderHeld(id){
+  const idx=orders.findIndex(o=>String(o.id)===String(id));
+  if(idx===-1)return;
+  const o={...orders[idx],heldAt:new Date().toISOString()};
+  heldOrders.unshift(o);
+  orders.splice(idx,1);
+  renderOrders();renderHeldOrders();searchOrders();renderReport();saveToStorage();
+  toast('已移入待出貨','success');
+}
+function shipHeldOrder(id){
+  const idx=heldOrders.findIndex(o=>String(o.id)===String(id));
+  if(idx===-1)return;
+  const o={...heldOrders[idx],completedAt:new Date().toISOString()};
+  completedOrders.unshift(o);
+  heldOrders.splice(idx,1);
+  renderHeldOrders();renderHistory();renderReport();saveToStorage();
+  toast('已出貨，移入歷史記錄','success');
+}
+function returnHeldToOrders(id){
+  const idx=heldOrders.findIndex(o=>String(o.id)===String(id));
+  if(idx===-1)return;
+  const o={...heldOrders[idx]};delete o.heldAt;
+  orders.push(o);heldOrders.splice(idx,1);
+  renderOrders();renderHeldOrders();searchOrders();renderReport();saveToStorage();
+  toast('已還原至待排程','info');
+}
+function renderHeldOrders(){
+  const cnt=document.getElementById('held-count');if(cnt)cnt.textContent=heldOrders.length;
+  const list=document.getElementById('held-list');if(!list)return;
+  if(!heldOrders.length){list.innerHTML='<div style="color:var(--tx2);text-align:center;padding:24px;">目前無待出貨訂單</div>';renderHeldSummary();return;}
+  list.innerHTML=heldOrders.map(o=>`
+    <div class="order-card ${o.Urgent?'urgent':''}">
+      <div class="order-card-header">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          ${o.Urgent?'<span class="badge b-red">🚨 緊急</span>':''}
+          <span class="badge b-orange">📦 待出貨</span>
+          <strong style="color:var(--ac);">${o.OrderNo||'—'}</strong>
+          ${o.Company?`<span class="badge b-purple">${o.Company}</span>`:''}
+          ${o.Due?`<span class="badge b-yellow">交貨 ${o.Due}</span>`:''}
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;">
+          <button class="btn btn-success btn-sm" onclick="shipHeldOrder('${o.id}')">🚚 已出貨</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEditOrder('${o.id}','held')">✏️</button>
+          <button class="btn btn-warning btn-sm" onclick="returnHeldToOrders('${o.id}')">↩️ 退回</button>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--tx2);margin-bottom:5px;">
+        ${o.Contact?`👤${o.Contact} `:''}${o.Phone?`📞${o.Phone} `:''}${o.Location?`📍${o.Location}`:''}
+        ${o.heldAt?`<span style="float:right;font-size:11px;">移入：${new Date(o.heldAt).toLocaleString('zh-TW')}</span>`:''}
+      </div>
+      ${o.Note?`<div style="font-size:12px;color:var(--yw);margin-bottom:4px;">📝 ${o.Note}</div>`:''}
+      <div style="font-size:12px;">${o.items.map(it=>`<span style="margin-right:8px;"><span style="color:var(--ac);">${it.PartNo}</span>×${it.Qty} <span class="badge b-blue">${it.Tonnage}T</span></span>`).join('')}</div>
+    </div>`).join('');
+  renderHeldSummary();
+}
+function renderHeldSummary(){
+  const el=document.getElementById('held-summary');if(!el)return;
+  if(!heldOrders.length){el.innerHTML='<div style="color:var(--tx2);font-size:13px;">無待出貨品項</div>';return;}
+  const byCompany={};
+  heldOrders.forEach(o=>{const co=o.Company||'未指定';if(!byCompany[co])byCompany[co]=[];byCompany[co].push(o);});
+  let html='<div style="display:flex;flex-wrap:wrap;gap:7px;">';
+  Object.entries(byCompany).forEach(([co,os])=>{
+    const total=os.reduce((s,o)=>s+o.items.reduce((ss,i)=>ss+i.Qty,0),0);
+    html+=`<div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:7px;padding:9px 12px;"><div style="font-weight:600;color:var(--ac);">${co}</div><div style="font-size:12px;color:var(--tx2);">${os.length} 訂單 / ${total} 件</div></div>`;
+  });
+  html+='</div>';el.innerHTML=html;
+}
+
+// ── SCHEDULE CONFIG ─────────────────────────────
+function renderScheduleConfig(){
+  document.getElementById('cfg-work-start').value=scheduleConfig.workStart||'08:00';
+  document.getElementById('cfg-work-end').value=scheduleConfig.workEnd||'20:00';
+  document.getElementById('cfg-break-min').value=scheduleConfig.breakMin||60;
+  document.getElementById('cfg-weekend').checked=!!scheduleConfig.weekendOvertime;
+  const mc=document.getElementById('cfg-machines');
+  mc.innerHTML=MACHINES.map(m=>{
+    const on=(scheduleConfig.activeMachines||MACHINES).includes(m);
+    return `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:5px 10px;background:var(--bg2);border:1px solid ${on?'var(--ac)':'var(--bdr)'};border-radius:6px;font-size:13px;">
+      <input type="checkbox" id="cfg-m-${m}" ${on?'checked':''} style="width:14px;height:14px;" onchange="updateCfgMachineBorder(this,${m})">
+      ${m}T</label>`;
+  }).join('');
+  updateConfigCapPreview();
+}
+function updateCfgMachineBorder(cb,m){
+  cb.parentElement.style.borderColor=cb.checked?'var(--ac)':'var(--bdr)';
+  updateConfigCapPreview();
+}
+function updateConfigCapPreview(){
+  try{
+    const s=document.getElementById('cfg-work-start').value||'08:00';
+    const e=document.getElementById('cfg-work-end').value||'20:00';
+    const b=Number(document.getElementById('cfg-break-min').value)||0;
+    const [sh,sm]=s.split(':').map(Number);const [eh,em]=e.split(':').map(Number);
+    const mins=(eh*60+em)-(sh*60+sm)-b;
+    const cap=Math.max(0,Math.floor(mins*60/(CYCLE_TIME_BASE+COOLING_TIME)));
+    const el=document.getElementById('cfg-daily-cap');
+    if(el)el.textContent=`預估每日產能：${cap} 件/機台（工時 ${mins} 分鐘）`;
+  }catch(e){}
+}
+function saveScheduleConfig(){
+  const s=document.getElementById('cfg-work-start').value||'08:00';
+  const e=document.getElementById('cfg-work-end').value||'20:00';
+  const b=Number(document.getElementById('cfg-break-min').value)||0;
+  const wknd=document.getElementById('cfg-weekend').checked;
+  const active=MACHINES.filter(m=>document.getElementById('cfg-m-'+m)&&document.getElementById('cfg-m-'+m).checked);
+  if(!active.length){toast('請至少選擇一台機台','warning');return;}
+  scheduleConfig={workStart:s,workEnd:e,breakMin:b,weekendOvertime:wknd,activeMachines:active};
+  saveToStorage();renderScheduleConfig();
+  toast('排程設定已儲存','success');
+}
 
 // ── UTILS ──────────────────────────────────────
 function today(){return new Date().toISOString().slice(0,10).replace(/-/g,'');}

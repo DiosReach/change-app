@@ -1,1820 +1,904 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#1a1a2e">
-<title>昌葳模具 - 射出成型管理系統</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh-tw.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
-<style>
-:root{--bg:#0d1117;--bg2:#161b22;--bgc:#1c2128;--bgh:#21262d;--bdr:#30363d;--tx:#e6edf3;--tx2:#8b949e;--ac:#58a6ff;--gr:#3fb950;--yw:#d29922;--rd:#f85149;--pu:#bc8cff;--or:#ffa657;}
-*{box-sizing:border-box;}
-body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-serif;font-size:15px;margin:0;padding:0;}
-#sidebar{width:220px;min-height:100vh;background:var(--bg2);border-right:1px solid var(--bdr);position:fixed;left:0;top:0;z-index:100;overflow-y:auto;transition:transform .3s;}
-#main{margin-left:220px;padding:20px;min-height:100vh;}
-.nav-item{display:flex;align-items:center;gap:10px;padding:11px 16px;cursor:pointer;border-left:3px solid transparent;transition:all .2s;color:var(--tx2);font-size:13px;font-weight:500;}
-.nav-item:hover{background:var(--bgh);color:var(--tx);}
-.nav-item.active{border-left-color:var(--ac);background:var(--bgh);color:var(--ac);}
-.section{display:none;}.section.active{display:block;}
-.card{background:var(--bgc);border:1px solid var(--bdr);border-radius:10px;padding:18px;margin-bottom:14px;}
-.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:500;transition:all .2s;}
-.btn-primary{background:var(--ac);color:#000;}.btn-primary:hover{background:#79b8ff;}
-.btn-success{background:var(--gr);color:#000;}.btn-success:hover{background:#56d364;}
-.btn-danger{background:var(--rd);color:#fff;}.btn-danger:hover{background:#ff6b6b;}
-.btn-warning{background:var(--yw);color:#000;}
-.btn-ghost{background:transparent;border:1px solid var(--bdr);color:var(--tx);}.btn-ghost:hover{background:var(--bgh);}
-.btn-sm{padding:4px 10px;font-size:12px;}
-input,select,textarea{background:var(--bg);border:1px solid var(--bdr);color:var(--tx);border-radius:6px;padding:7px 11px;font-size:13px;width:100%;outline:none;transition:border-color .2s;}
-input:focus,select:focus,textarea:focus{border-color:var(--ac);}
-label{display:block;font-size:11px;color:var(--tx2);margin-bottom:3px;}
-h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 12px;}h3{font-size:14px;font-weight:600;}
-.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;}
-.b-blue{background:rgba(88,166,255,.2);color:var(--ac);}
-.b-green{background:rgba(63,185,80,.2);color:var(--gr);}
-.b-red{background:rgba(248,81,73,.2);color:var(--rd);}
-.b-yellow{background:rgba(210,153,34,.2);color:var(--yw);}
-.b-purple{background:rgba(188,140,255,.2);color:var(--pu);}
-.b-orange{background:rgba(255,166,87,.2);color:var(--or);}
-#toast-container{position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:7px;}
-.toast{padding:11px 16px;border-radius:8px;font-size:13px;font-weight:500;max-width:320px;animation:toastIn .3s ease;display:flex;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,0,0,.4);}
-.toast-success{background:#1a3a2a;border:1px solid var(--gr);color:var(--gr);}
-.toast-error{background:#3a1a1a;border:1px solid var(--rd);color:var(--rd);}
-.toast-warning{background:#3a2a0a;border:1px solid var(--yw);color:var(--yw);}
-.toast-info{background:#1a2a3a;border:1px solid var(--ac);color:var(--ac);}
-@keyframes toastIn{from{transform:translateX(80px);opacity:0}to{transform:translateX(0);opacity:1}}
-#loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:9998;}
-.spinner{width:44px;height:44px;border:4px solid var(--bdr);border-top-color:var(--ac);border-radius:50%;animation:spin .8s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg)}}
-.upload-zone{border:2px dashed var(--bdr);border-radius:10px;padding:36px;text-align:center;cursor:pointer;transition:all .2s;color:var(--tx2);}
-.upload-zone:hover,.upload-zone.drag-over{border-color:var(--ac);color:var(--tx);}
-.mat-header{background:linear-gradient(135deg,#1a2a3a,#1c2d1c);padding:7px 14px;border-radius:6px;margin:10px 0 3px;display:flex;align-items:center;justify-content:space-between;}
-.tab-bar{display:flex;gap:4px;border-bottom:1px solid var(--bdr);margin-bottom:14px;}
-.tab-btn{padding:7px 14px;border:none;background:transparent;color:var(--tx2);cursor:pointer;border-bottom:2px solid transparent;font-size:13px;font-weight:500;}
-.tab-btn.active{color:var(--ac);border-bottom-color:var(--ac);}
-.subtab-content{display:none;}.subtab-content.active{display:block;}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:none;align-items:center;justify-content:center;}
-.modal-overlay.open{display:flex;}
-.modal{background:var(--bgc);border:1px solid var(--bdr);border-radius:12px;padding:22px;max-width:640px;width:92%;max-height:85vh;overflow-y:auto;}
-.alert-box{padding:11px 14px;border-radius:8px;margin-bottom:9px;display:flex;align-items:flex-start;gap:9px;}
-.alert-warn{background:rgba(210,153,34,.15);border:1px solid var(--yw);}
-.alert-err{background:rgba(248,81,73,.15);border:1px solid var(--rd);}
-.alert-info{background:rgba(88,166,255,.1);border:1px solid var(--ac);}
-.gantt-table{width:100%;border-collapse:collapse;font-size:12px;}
-.gantt-table th,.gantt-table td{border:1px solid var(--bdr);padding:5px 7px;text-align:center;}
-.gantt-table th{background:var(--bg2);position:sticky;top:0;}
-.stat-card{background:var(--bgc);border:1px solid var(--bdr);border-radius:8px;padding:14px;}
-.stat-num{font-size:26px;font-weight:700;}.stat-lbl{font-size:11px;color:var(--tx2);margin-top:3px;}
-.u-bar{height:7px;border-radius:4px;background:var(--bdr);overflow:hidden;}
-.u-fill{height:100%;border-radius:4px;transition:width .5s;}
-.db-tbl{width:100%;border-collapse:collapse;font-size:12px;}
-.db-tbl th{background:var(--bg2);padding:7px 8px;text-align:left;border:1px solid var(--bdr);color:var(--tx2);font-weight:600;white-space:nowrap;}
-.db-tbl td{padding:6px 8px;border:1px solid var(--bdr);vertical-align:middle;}
-.db-tbl tr:hover td{background:var(--bgh);}
-.item-row{display:grid;grid-template-columns:2fr 90px auto;gap:7px;align-items:center;margin-bottom:5px;}
-.order-card{background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:12px;margin-bottom:8px;}
-.order-card.urgent{border-color:var(--rd);}
-.order-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;}
-.search-row{display:flex;gap:8px;align-items:flex-start;padding:10px;background:var(--bg2);border:1px solid var(--bdr);border-radius:6px;margin-bottom:6px;}
-.goods-check{width:16px;height:16px;flex-shrink:0;margin-top:2px;}
-.sync-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;transition:all .3s;}
-.sync-dot.connected{background:var(--gr);box-shadow:0 0 7px var(--gr);}
-.sync-dot.disconnected{background:var(--rd);}
-.sync-dot.syncing{background:var(--yw);animation:sp .9s infinite;}
-@keyframes sp{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(1.3);}}
-.gs-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:5px;border:1px solid var(--bdr);background:transparent;color:var(--tx2);cursor:pointer;font-size:12px;font-weight:500;transition:all .2s;}
-.gs-btn:hover{border-color:var(--ac);color:var(--ac);}
-.sync-log{max-height:200px;overflow-y:auto;}
-.sync-log-item{padding:4px 9px;border-left:3px solid var(--bdr);margin-bottom:3px;font-size:12px;color:var(--tx2);font-family:monospace;}
-.sync-log-item.ok{border-color:var(--gr);color:var(--gr);}
-.sync-log-item.err{border-color:var(--rd);color:var(--rd);}
-.sync-log-item.info{border-color:var(--ac);color:var(--ac);}
-.code-block{background:#0d1117;border:1px solid var(--bdr);border-radius:6px;padding:11px;font-family:monospace;font-size:11px;max-height:300px;overflow-y:auto;color:#a5d6ff;white-space:pre;line-height:1.6;}
-#backup-bar{font-size:11px;color:var(--tx2);padding:5px 14px;border-bottom:1px solid var(--bdr);}
-.sched-item{padding:9px;background:var(--bg2);border:1px solid var(--bdr);border-radius:6px;margin-bottom:5px;cursor:grab;}
-.sched-item.urgent{border-color:var(--rd);}
-#schedule-list{max-height:380px;overflow-y:auto;}
-.delivery-card{background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:11px;margin-bottom:8px;}
-@media(max-width:768px){
-  #sidebar{transform:translateX(-100%);z-index:200;width:260px;}
-  #sidebar.open{transform:translateX(0);}
-  #sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199;}
-  #sidebar.open~#sidebar-overlay,body.sidebar-open #sidebar-overlay{display:block;}
-  #main{margin-left:0;padding:12px;padding-bottom:70px;}
-  #menu-toggle{display:flex!important;}
-  h1{font-size:17px;}h2{font-size:15px;}
-  .card{padding:12px;margin-bottom:10px;}
-  .btn{padding:9px 12px;font-size:13px;min-height:40px;}
-  .btn-sm{padding:7px 10px;font-size:12px;min-height:36px;}
-  input,select,textarea{padding:9px 11px;font-size:14px;min-height:40px;}
-  .modal{max-width:100%!important;width:100%!important;max-height:92vh;border-radius:12px 12px 0 0;margin-top:auto;}
-  .modal-overlay.open{align-items:flex-end;}
-  .order-card-header{flex-direction:column;align-items:flex-start;}
-  .order-card-header>div:last-child{align-self:flex-end;margin-top:4px;}
-  .db-tbl{font-size:11px;}
-  .db-tbl th,.db-tbl td{padding:5px 5px;}
-  #sorted-preview,#db-table-container,[style*="overflow-x:auto"]{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  .gantt-table{font-size:10px;}
-  .search-row{flex-wrap:wrap;gap:6px;}
-  .tab-bar{overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;}
-  .tab-btn{white-space:nowrap;}
-  /* Bottom nav bar */
-  #bottom-nav{display:flex!important;}
-}
-#bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:150;background:var(--bg2);border-top:1px solid var(--bdr);padding:4px 0;justify-content:space-around;}
-.bnav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 8px;cursor:pointer;color:var(--tx2);font-size:9px;border-radius:6px;min-width:48px;transition:color .2s;}
-.bnav-item.active,.bnav-item:active{color:var(--ac);}
-.bnav-item span:first-child{font-size:20px;line-height:1;}
-.flatpickr-calendar{background:var(--bgc)!important;border:1px solid var(--bdr)!important;}
-.pn-wrap{position:relative;}
-.pn-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--bgc);border:1px solid var(--ac);border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;z-index:9000;box-shadow:0 8px 24px rgba(0,0,0,.5);display:none;}
-.pn-dropdown.show{display:block;}
-.pn-opt{padding:7px 11px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--bdr);}
-.pn-opt:last-child{border-bottom:none;}
-.pn-opt:hover,.pn-opt.active{background:var(--bgh);}
-.pn-opt strong{color:var(--ac);}
-.pn-opt span{color:var(--tx2);font-size:11px;margin-left:6px;}
-.flatpickr-day{color:var(--tx)!important;}
-.flatpickr-day.selected{background:var(--ac)!important;border-color:var(--ac)!important;color:#000!important;}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PO-JUI WU (Reach) — Sound Recordist</title>
+  <meta name="description" content="PO-JUI WU (Reach) — Field Sound Recordist & Boom Operator based in Taiwan. Credits include award-winning features, television dramas, and commercial productions.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:      #0a0a0a;
+      --surface: #131313;
+      --border:  #1e1e1e;
+      --text:    #edebe7;
+      --muted:   #5e5e5e;
+      --accent:  #c4a35a;
+      --sans:    'Inter', -apple-system, sans-serif;
+      --display: 'Montserrat', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; }
+
+    /* ─────────────── NAV ─────────────── */
+    nav {
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 56px;
+      transition: background 0.4s, border-color 0.4s;
+      border-bottom: 1px solid transparent;
+    }
+    nav.scrolled {
+      background: rgba(10,10,10,0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom-color: var(--border);
+    }
+    .nav-logo {
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .nav-links {
+      list-style: none;
+      display: flex;
+      gap: 40px;
+    }
+    .nav-links a {
+      color: #ffffff;
+      text-decoration: none;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: color 0.25s;
+    }
+    .nav-links a:hover { color: var(--accent); }
+
+    /* Mobile hamburger */
+    .nav-toggle { display: none; background: none; border: none; cursor: pointer; padding: 4px; }
+    .nav-toggle span {
+      display: block;
+      width: 22px;
+      height: 1.5px;
+      background: var(--text);
+      margin: 5px 0;
+      transition: 0.3s;
+    }
+
+    /* ─────────────── HERO ─────────────── */
+    #hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 0 56px 88px;
+      position: relative;
+      background: linear-gradient(to bottom, rgba(10,10,10,0.45) 0%, rgba(10,10,10,0.75) 100%), url('IMG_0728.JPG') center/cover no-repeat;
+    }
+    .hero-eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 28px;
+    }
+    .hero-name {
+      font-family: var(--display);
+      font-size: clamp(52px, 9vw, 120px);
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      line-height: 1;
+      margin-bottom: 36px;
+    }
+    .hero-sub {
+      font-size: clamp(14px, 1.5vw, 18px);
+      font-weight: 300;
+      color: var(--muted);
+      max-width: 500px;
+      line-height: 1.7;
+    }
+    .hero-scroll {
+      position: absolute;
+      bottom: 36px;
+      right: 56px;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      writing-mode: vertical-rl;
+    }
+    .hero-scroll::after {
+      content: '';
+      display: block;
+      width: 1px;
+      height: 48px;
+      background: var(--accent);
+      margin: 12px auto 0;
+      animation: scrollLine 2s ease-in-out infinite;
+    }
+    @keyframes scrollLine {
+      0%, 100% { opacity: 0.3; height: 48px; }
+      50% { opacity: 1; height: 64px; }
+    }
+    .hero-rule {
+      width: 100%;
+      height: 1px;
+      background: var(--border);
+      margin-top: 88px;
+    }
+
+    /* ─────────────── SECTION COMMON ─────────────── */
+    .section { padding: 110px 56px; }
+
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 72px;
+    }
+    .section-num {
+      font-size: 10px;
+      color: var(--accent);
+      letter-spacing: 0.15em;
+      font-weight: 500;
+    }
+    .section-title {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* ─────────────── WORKS ─────────────── */
+    #works { border-top: 1px solid var(--border); }
+
+    .works-grid {
+      columns: 2;
+      column-gap: 0;
+    }
+    .works-grid > * {
+      break-inside: avoid;
+    }
+
+    .work-card {
+      background: var(--surface);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .work-img-wrap {
+      overflow: hidden;
+      position: relative;
+    }
+    .work-img-wrap img {
+      width: 100%;
+      height: auto;
+      display: block;
+      transition: transform 0.7s cubic-bezier(0.25, 0, 0.25, 1);
+    }
+    .work-card:hover .work-img-wrap img { transform: scale(1.06); }
+
+    a.work-link {
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+
+    /* Dark overlay on hover */
+    .work-img-wrap::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.15);
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+    .work-card:hover .work-img-wrap::after { opacity: 1; }
+
+    .work-info {
+      padding: 22px 28px 28px;
+      border-top: 1px solid var(--border);
+    }
+    .work-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .work-year { font-size: 10px; color: var(--accent); letter-spacing: 0.1em; font-weight: 500; }
+    .work-type { font-size: 10px; color: var(--muted); letter-spacing: 0.07em; }
+    .work-title {
+      font-family: var(--display);
+      font-size: 20px;
+      font-weight: 400;
+      line-height: 1.3;
+      margin-bottom: 6px;
+    }
+    .work-role  { font-size: 12px; color: var(--muted); letter-spacing: 0.02em; }
+    .work-award {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      border: 1px solid rgba(196,163,90,0.3);
+      padding: 4px 10px;
+      border-radius: 2px;
+    }
+
+    /* ─────────────── SERVICES ─────────────── */
+    #services { border-top: 1px solid var(--border); }
+
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border: 1px solid var(--border);
+    }
+    .service-item {
+      padding: 44px 40px;
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.4s;
+    }
+    .service-item:hover { background: var(--surface); }
+    .service-item:nth-child(3n) { border-right: none; }
+    .service-item:nth-last-child(-n+3) { border-bottom: none; }
+
+    .service-name {
+      font-size: 18px;
+      font-weight: 400;
+      margin-bottom: 14px;
+      line-height: 1.3;
+    }
+    .service-desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    /* ─────────────── ABOUT ─────────────── */
+    #about { border-top: 1px solid var(--border); }
+
+    .about-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      border: 1px solid var(--border);
+    }
+
+    .about-photo {
+      position: relative;
+      overflow: hidden;
+    }
+    .about-photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+      display: block;
+    }
+    .about-photo-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 32px;
+      background: linear-gradient(transparent, rgba(10,10,10,0.85));
+    }
+    .about-photo-overlay h3 {
+      font-family: var(--display);
+      font-size: 28px;
+      font-weight: 400;
+      font-style: italic;
+      line-height: 1.3;
+    }
+
+    .about-content {
+      padding: 56px 52px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .about-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0;
+      margin-bottom: 52px;
+    }
+    .stat {
+      border: 1px solid var(--border);
+      margin: -0.5px;
+      padding: 24px;
+    }
+    .stat-num {
+      font-size: 40px;
+      font-weight: 300;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .stat-label {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-top: 6px;
+    }
+
+    .about-blocks { display: flex; flex-direction: column; gap: 40px; }
+    .about-block h4 {
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 14px;
+    }
+    .about-block p {
+      font-size: 15px;
+      line-height: 1.9;
+      font-weight: 300;
+    }
+
+    /* ─────────────── TIMELINE ─────────────── */
+    #timeline { border-top: 1px solid var(--border); padding: 110px 56px; }
+
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 48px;
+      padding: 32px 0;
+      border-bottom: 1px solid var(--border);
+      align-items: baseline;
+      transition: background 0.3s;
+    }
+    .timeline-item:first-child { border-top: 1px solid var(--border); }
+    .timeline-item:hover { background: var(--surface); margin: 0 -20px; padding: 32px 20px; }
+
+    .timeline-year {
+      font-size: 12px;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+      font-weight: 500;
+    }
+    .timeline-title {
+      font-size: 16px;
+      font-weight: 400;
+      margin-bottom: 5px;
+    }
+    .timeline-detail {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    /* ─────────────── FOOTER / CONTACT ─────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 100px 56px 56px;
+    }
+    .footer-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 80px;
+    }
+    .footer-cta-label {
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+    .footer-cta {
+      font-family: var(--display);
+      font-size: clamp(40px, 6vw, 88px);
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+    }
+    .footer-cta a {
+      text-decoration: none;
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 4px;
+      transition: color 0.25s;
+    }
+    .footer-cta a:hover { color: var(--accent); }
+
+    .footer-links {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 16px;
+    }
+    .footer-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      transition: color 0.25s;
+    }
+    .footer-links a:hover { color: var(--text); }
+
+    .footer-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid var(--border);
+      padding-top: 28px;
+    }
+    .footer-copy, .footer-location {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+    }
+
+    /* ─────────────── SCROLL ANIMATIONS ─────────────── */
+    .fade-up {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+    .fade-up.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ─────────────── RESPONSIVE ─────────────── */
+    @media (max-width: 1024px) {
+      nav { padding: 20px 32px; }
+      #hero { padding: 0 32px 64px; }
+      .section, #timeline { padding: 80px 32px; }
+      footer { padding: 72px 32px 40px; }
+      .about-content { padding: 40px 36px; }
+    }
+
+    @media (max-width: 768px) {
+      /* Nav mobile */
+      .nav-toggle { display: block; }
+      .nav-links {
+        position: fixed;
+        inset: 0;
+        background: var(--bg);
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 36px;
+        transform: translateX(100%);
+        transition: transform 0.4s ease;
+      }
+      .nav-links.open { transform: translateX(0); }
+      .nav-links a { font-size: 16px; letter-spacing: 0.2em; }
+
+      /* Hero */
+      #hero { padding: 0 24px 56px; }
+      .hero-scroll { display: none; }
+
+      /* Sections */
+      .section, #timeline { padding: 64px 24px; }
+      footer { padding: 56px 24px 32px; }
+
+      /* Works */
+      .works-grid { columns: 1; }
+
+      /* Services */
+      .services-grid { grid-template-columns: 1fr; }
+      .service-item { border-right: none !important; }
+      .service-item:nth-last-child(-n+3) { border-bottom: 1px solid var(--border); }
+      .service-item:last-child { border-bottom: none; }
+
+      /* About */
+      .about-layout { grid-template-columns: 1fr; }
+      .about-photo { max-height: 480px; }
+      .about-content { padding: 40px 24px; }
+      .about-stats { grid-template-columns: 1fr 1fr; }
+
+      /* Timeline */
+      .timeline-item { grid-template-columns: 80px 1fr; gap: 20px; }
+      .timeline-item:hover { margin: 0; padding: 32px 0; }
+
+      /* Footer */
+      .footer-top { flex-direction: column; align-items: flex-start; gap: 48px; }
+      .footer-links { align-items: flex-start; }
+      .footer-bottom { flex-direction: column; align-items: flex-start; gap: 8px; }
+    }
+  </style>
 </head>
 <body>
-<div id="toast-container"></div>
-<div id="loading-overlay"><div class="spinner"></div></div>
-<div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
-<!-- Bottom Nav (mobile) -->
-<nav id="bottom-nav">
-  <div class="bnav-item active" onclick="navigate('schedule');setBottomActive(this)"><span>📅</span><span>訂單</span></div>
-  <div class="bnav-item" onclick="navigate('order-search');setBottomActive(this)"><span>🔍</span><span>查詢</span></div>
-  <div class="bnav-item" onclick="navigate('history');setBottomActive(this)"><span>📁</span><span>歷史</span></div>
-  <div class="bnav-item" onclick="navigate('db');setBottomActive(this)"><span>🗄️</span><span>資料庫</span></div>
-  <div class="bnav-item" onclick="document.getElementById('sidebar').classList.toggle('open');document.body.classList.toggle('sidebar-open')"><span>☰</span><span>選單</span></div>
+<!-- ══════════════ NAV ══════════════ -->
+<nav id="main-nav">
+  <div class="nav-logo">PO-JUI WU (Reach)</div>
+  <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+  <ul class="nav-links">
+    <li><a href="#works" onclick="document.querySelector('.nav-links').classList.remove('open')">Works</a></li>
+    <li><a href="#about" onclick="document.querySelector('.nav-links').classList.remove('open')">About</a></li>
+    <li><a href="#contact" onclick="document.querySelector('.nav-links').classList.remove('open')">Contact</a></li>
+  </ul>
 </nav>
 
-<!-- DB Edit Modal -->
-<div class="modal-overlay" id="modal-db-edit">
-  <div class="modal">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <h2 style="margin:0;" id="modal-db-title">編輯品項</h2>
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-db-edit')">✕</button>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="db-edit-fields"></div>
-    <div style="display:flex;gap:8px;margin-top:14px;">
-      <button class="btn btn-primary" onclick="saveDBEdit()">💾 儲存</button>
-      <button class="btn btn-ghost" onclick="closeModal('modal-db-edit')">取消</button>
-    </div>
+<!-- ══════════════ HERO ══════════════ -->
+<section id="hero">
+  <div>
+    <p class="hero-eyebrow">Location Sound &nbsp;&middot;&nbsp; Taiwan</p>
+    <h1 class="hero-name">PO-JUI WU<br><span style="font-size:0.4em;font-weight:300;letter-spacing:0.05em;font-family:var(--sans);opacity:0.5;">(Reach)</span></h1>
+    <p class="hero-sub">
+      Sound Recordist &amp; Boom Operator for Short Film,<br>
+      Movie, Television &amp; Commercial Production.
+    </p>
   </div>
-</div>
+  <span class="hero-scroll">Scroll</span>
+  <div class="hero-rule"></div>
+</section>
 
-<!-- 訂單編輯 Modal -->
-<div class="modal-overlay" id="modal-order-edit">
-  <div class="modal" style="max-width:680px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <h2 style="margin:0;">✏️ 編輯訂單</h2>
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-order-edit')">✕</button>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-      <div><label>訂單號碼</label><input id="oe-no" placeholder="ORD-2026-001"></div>
-      <div><label>訂單公司名稱</label><input id="oe-company" placeholder="公司名稱"></div>
-      <div><label>聯絡人</label><input id="oe-contact" placeholder="姓名"></div>
-      <div><label>聯絡電話</label><input id="oe-phone" placeholder="電話"></div>
-      <div><label>下訂日期</label><input id="oe-orderdate" type="date"></div>
-      <div><label>交貨日期</label><input id="oe-due" type="date"></div>
-      <div><label>交貨地點</label><input id="oe-location" placeholder="地址"></div>
-      <div style="display:flex;align-items:center;gap:7px;padding-top:18px;">
-        <input type="checkbox" id="oe-urgent" style="width:15px;height:15px;">
-        <label for="oe-urgent" style="margin:0;color:var(--rd);font-weight:600;font-size:13px;">🚨 緊急</label>
+<!-- ══════════════ SELECTED WORKS ══════════════ -->
+<section id="works" class="section">
+  <div class="section-label">
+    <span class="section-num">01</span>
+    <span class="section-title">Selected Works</span>
+  </div>
+
+  <div class="works-grid">
+
+    <!-- ★ Featured — Granny Must Die -->
+    <a href="https://www.hakkatv.org.tw/series/1727319642718231" class="work-link" target="_blank" rel="noopener">
+    <div class="work-card fade-up">
+      <div class="work-img-wrap">
+        <img src="granny-must-die.jpg" alt="Granny Must Die" loading="eager">
       </div>
-      <div style="grid-column:1/-1;"><label>備注</label><textarea id="oe-note" rows="2" style="resize:vertical;"></textarea></div>
-    </div>
-    <div style="border:1px solid var(--bdr);border-radius:8px;padding:10px;margin-bottom:12px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <h3 style="margin:0;">訂單品項</h3>
-        <button class="btn btn-success btn-sm" onclick="addEditItem()">➕ 新增品項</button>
+      <div class="work-info">
+        <div class="work-meta">
+          <span class="work-year">2024</span>
+          <span class="work-type">&middot; Feature Film</span>
+        </div>
+        <h3 class="work-title">Granny Must Die</h3>
+        <p class="work-role">Boom Operator</p>
+        <span class="work-award">Raindance Film Festival &mdash; Official Selection &times; 3</span>
       </div>
-      <div id="oe-items"></div>
     </div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-primary" onclick="saveEditOrder()">💾 儲存</button>
-      <button class="btn btn-ghost" onclick="closeModal('modal-order-edit')">取消</button>
-    </div>
-  </div>
-</div>
+    </a>
 
-<!-- 貨單預覽 Modal -->
-<div class="modal-overlay" id="modal-goods-note">
-  <div class="modal" style="max-width:720px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <h2 style="margin:0;">📄 貨單預覽</h2>
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-goods-note')">✕</button>
+    <!-- The Tao Exorcist -->
+    <a href="https://www.youtube.com/watch?v=i-o2pnsINVs" class="work-link" target="_blank" rel="noopener">
+    <div class="work-card fade-up">
+      <div class="work-img-wrap">
+        <img src="tao-exorcist.jpg" alt="The Tao Exorcist" loading="lazy">
+      </div>
+      <div class="work-info">
+        <div class="work-meta">
+          <span class="work-year">2025</span>
+          <span class="work-type">&middot; Theatrical Release</span>
+        </div>
+        <h3 class="work-title">The Tao Exorcist</h3>
+        <p class="work-role">Sound Assistant</p>
+      </div>
     </div>
-    <div id="goods-note-preview"></div>
-    <div style="display:flex;gap:8px;margin-top:14px;">
-      <button class="btn btn-success" onclick="exportGoodsNotePDF()">⬇️ 下載 PDF 貨單</button>
-      <button class="btn btn-ghost btn-sm" onclick="exportGoodsNoteExcel()">⬇️ Excel</button>
-    </div>
-  </div>
-</div>
+    </a>
 
-<!-- Apps Script Modal -->
-<div class="modal-overlay" id="modal-appsscript">
-  <div class="modal" style="max-width:680px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <h2 style="margin:0;">📋 Apps Script 程式碼</h2>
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-appsscript')">✕</button>
+    <!-- Vote Exchange -->
+    <div class="work-card fade-up">
+      <div class="work-img-wrap">
+        <img src="vote-exchange.jpg" alt="Vote Exchange" loading="lazy">
+      </div>
+      <div class="work-info">
+        <div class="work-meta">
+          <span class="work-year">2022</span>
+          <span class="work-type">&middot; Short Film</span>
+        </div>
+        <h3 class="work-title">Vote Exchange</h3>
+        <p class="work-role">Sound Recordist</p>
+        <span class="work-award">Red Dot Design Award &mdash; Winner</span>
+      </div>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:8px;">
-      <button class="btn btn-primary btn-sm" onclick="copyAppsScriptCode()">📋 複製</button>
-      <span style="font-size:12px;color:var(--tx2);align-self:center;">執行身份：我自己 ｜存取：所有人（含匿名）</span>
-    </div>
-    <div class="code-block" id="apps-script-code-display"></div>
-  </div>
-</div>
 
-<!-- Sidebar -->
-<aside id="sidebar">
-  <div style="padding:16px 14px;border-bottom:1px solid var(--bdr);">
-    <div style="font-size:10px;color:var(--tx2);letter-spacing:1px;text-transform:uppercase;">昌葳模具</div>
-    <div style="font-size:15px;font-weight:700;margin-top:2px;">射出成型管理系統</div>
-    <div style="display:flex;align-items:center;gap:5px;margin-top:5px;">
-      <span class="sync-dot disconnected" id="sidebar-sync-dot"></span>
-      <span style="font-size:10px;color:var(--tx2);" id="sidebar-sync-label">未連線 GSheets</span>
+    <!-- Light of Crevice -->
+    <div class="work-card fade-up">
+      <div class="work-img-wrap">
+        <img src="light-of-crevice.jpg" alt="Light of Crevice" loading="lazy">
+      </div>
+      <div class="work-info">
+        <div class="work-meta">
+          <span class="work-year">2022</span>
+          <span class="work-type">&middot; Short Film</span>
+        </div>
+        <h3 class="work-title">Light of Crevice</h3>
+        <p class="work-role">Sound Recordist</p>
+        <span class="work-award">Red Dot Design Award &mdash; Winner</span>
+      </div>
     </div>
-  </div>
-  <div id="backup-bar">備份：載入中…</div>
-  <nav style="padding:6px 0;">
-    <div class="nav-item active" onclick="navigate('db')">🗄️<span>資料庫管理</span></div>
-    <div class="nav-item" onclick="navigate('schedule')">📅<span>多天生產排程</span></div>
-    <div class="nav-item" onclick="navigate('delivery')">🚚<span>每日送貨規劃</span></div>
-    <div class="nav-item" onclick="navigate('order-search')">🔍<span>訂單查詢</span></div>
-    <div class="nav-item" onclick="navigate('history')">📁<span>歷史記錄</span></div>
-    <div class="nav-item" onclick="navigate('held')">📦<span>待出貨</span></div>
-    <div class="nav-item" onclick="navigate('report')">📊<span>報表總覽</span></div>
-    <div class="nav-item" onclick="navigate('gsync')">☁️<span>Google Sheets 同步</span>
-      <span class="sync-dot disconnected" id="nav-sync-dot" style="margin-left:auto;"></span>
-    </div>
-  </nav>
-  <div style="padding:12px 14px;border-top:1px solid var(--bdr);">
-    <button class="btn btn-ghost btn-sm" style="width:100%;margin-bottom:4px;justify-content:center;" onclick="exportBackup()">💾 匯出備份</button>
-    <label for="import-backup-file" class="btn btn-ghost btn-sm" style="width:100%;margin-bottom:4px;justify-content:center;cursor:pointer;">📂 匯入備份</label>
-    <input type="file" id="import-backup-file" accept=".json" style="display:none;" onchange="importBackup(event)">
-    <button class="btn btn-danger btn-sm" style="width:100%;margin-bottom:4px;justify-content:center;" onclick="clearTodayData()">🗑️ 清除今日資料</button>
-    <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;border-color:rgba(88,166,255,.4);color:var(--ac);" onclick="syncAll()">☁️ 一鍵同步</button>
-  </div>
-</aside>
 
-<!-- Main -->
-<main id="main">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-    <button class="btn btn-ghost btn-sm" id="menu-toggle" style="display:none;" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+    <!-- Father Dean -->
+    <a href="https://www.youtube.com/watch?v=UN5OFH1oA64&list=PLc8M1wVJOpHzXjA7S3PlV6_WMBUD-wRCZ" class="work-link" target="_blank" rel="noopener">
+    <div class="work-card fade-up">
+      <div class="work-img-wrap">
+        <img src="father-dean.jpg" alt="Father Dean" loading="lazy">
+      </div>
+      <div class="work-info">
+        <div class="work-meta">
+          <span class="work-year">2025</span>
+          <span class="work-type">&middot; TV Drama</span>
+        </div>
+        <h3 class="work-title">Father Dean</h3>
+        <p class="work-role">Boom Operator &nbsp;&middot;&nbsp; DaAi Television</p>
+      </div>
+    </div>
+    </a>
+
+    <!-- A Controversial Entertainer -->
+    <a href="https://www.youtube.com/watch?v=e38SNNSLq-c" class="work-link" target="_blank" rel="noopener">
+    <div class="work-card fade-up">
+      <div class="work-img-wrap">
+        <img src="controversial-entertainer.jpg" alt="A Controversial Entertainer" loading="lazy">
+      </div>
+      <div class="work-info">
+        <div class="work-meta">
+          <span class="work-year">2025</span>
+          <span class="work-type">&middot; TV Drama</span>
+        </div>
+        <h3 class="work-title">A Controversial Entertainer</h3>
+        <p class="work-role">Boom Operator</p>
+      </div>
+    </div>
+    </a>
+
+    <!-- Grain Rain -->
+    <div class="work-card fade-up">
+      <div class="work-img-wrap">
+        <img src="grain-rain.jpg" alt="Grain Rain" loading="lazy">
+      </div>
+      <div class="work-info">
+        <div class="work-meta">
+          <span class="work-year">2022</span>
+          <span class="work-type">&middot; Short Film</span>
+        </div>
+        <h3 class="work-title">Grain Rain</h3>
+        <p class="work-role">Sound Recordist</p>
+        <span class="work-award">Multiple International Festival Selections</span>
+      </div>
+    </div>
+
+    <!-- Spicy House -->
+    <a href="https://www.youtube.com/watch?v=VYWCwC6sTiM&list=PLHCwVsO5oxdNzFIl4MZ8FDRphlBYoXJyF" class="work-link" target="_blank" rel="noopener">
+    <div class="work-card fade-up">
+      <div class="work-img-wrap">
+        <img src="spicy-house.webp" alt="Spicy House" loading="lazy">
+      </div>
+      <div class="work-info">
+        <div class="work-meta">
+          <span class="work-year">2023</span>
+          <span class="work-type">&middot; Television</span>
+        </div>
+        <h3 class="work-title">Spicy House</h3>
+        <p class="work-role">Sound Recordist</p>
+      </div>
+    </div>
+    </a>
+
+  </div>
+</section>
+
+<!-- ══════════════ SERVICES ══════════════ -->
+<section id="services" class="section">
+  <div class="section-label">
+    <span class="section-num">02</span>
+    <span class="section-title">What I Do</span>
+  </div>
+
+  <div class="services-grid">
+    <div class="service-item fade-up">
+      <h3 class="service-name">Location Sound Recording</h3>
+      <p class="service-desc">Professional on-set audio capture using Sound Devices multi-track systems, delivering broadcast-quality production sound across all formats.</p>
+    </div>
+    <div class="service-item fade-up">
+      <h3 class="service-name">Boom Operation</h3>
+      <p class="service-desc">Precise microphone positioning to capture clean, natural dialogue while preserving actors' freedom of movement and the director's visual frame.</p>
+    </div>
+    <div class="service-item fade-up">
+      <h3 class="service-name">Film &amp; Television</h3>
+      <p class="service-desc">Experienced across single-camera indie features, multi-camera TV drama, and reality programming &mdash; adaptable to any production workflow.</p>
+    </div>
+    <div class="service-item fade-up">
+      <h3 class="service-name">Commercial Production</h3>
+      <p class="service-desc">High-quality location sound for advertising campaigns. Past clients include Samsung, PlayStation Taiwan, and major political campaigns.</p>
+    </div>
+    <div class="service-item fade-up">
+      <h3 class="service-name">Music Video</h3>
+      <p class="service-desc">Playback coordination and on-set audio capture for music video productions, ensuring perfect sync and performance authenticity.</p>
+    </div>
+    <div class="service-item fade-up">
+      <h3 class="service-name">Multi-track Recording</h3>
+      <p class="service-desc">Complex wireless and wired multi-microphone setups for challenging acoustic environments, ensuring every take is captured with full redundancy.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ ABOUT ══════════════ -->
+<section id="about" class="section">
+  <div class="section-label">
+    <span class="section-num">03</span>
+    <span class="section-title">About</span>
+  </div>
+
+  <div class="about-layout fade-up">
+    <!-- Photo column -->
+    <div class="about-photo">
+      <img src="profile.jpeg" alt="PO-JUI WU (Reach) on set with boom pole and sound equipment">
+      <div class="about-photo-overlay">
+        <h3>"Sound is the soul<br>of cinema."</h3>
+      </div>
+    </div>
+
+    <!-- Content column -->
+    <div class="about-content">
+      <div class="about-stats">
+        <div class="stat">
+          <div class="stat-num">5+</div>
+          <div class="stat-label">Years on Set</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">50+</div>
+          <div class="stat-label">Productions</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">2</div>
+          <div class="stat-label">Red Dot Awards</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">3</div>
+          <div class="stat-label">Raindance Selections</div>
+        </div>
+      </div>
+
+      <div class="about-blocks">
+        <div class="about-block">
+          <h4>What I Do</h4>
+          <p>I specialize in capturing authentic, broadcast-quality sound on location &mdash; from intimate short films to major theatrical releases. Whether operating the boom or running the mixing cart, my focus is always on serving the story.</p>
+        </div>
+        <div class="about-block">
+          <h4>Background</h4>
+          <p>Based in Taiwan, I built my foundation through intensive graduate film productions before expanding into television drama, theatrical features, commercials, and music videos. My credits include Raindance and Red Dot Award-recognized productions.</p>
+        </div>
+        <div class="about-block">
+          <h4>Approach</h4>
+          <p>Great production sound is invisible &mdash; it pulls audiences into the story without calling attention to itself. I work closely with directors and cinematographers from pre-production onward, prioritizing reliability, adaptability, and calm precision on set.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ CAREER TIMELINE ══════════════ -->
+<section id="timeline">
+  <div class="section" style="padding-bottom: 0;">
+    <div class="section-label">
+      <span class="section-num">04</span>
+      <span class="section-title">Career</span>
+    </div>
+  </div>
+
+  <div style="padding: 0 56px 110px;">
+    <div class="timeline-item fade-up">
+      <div class="timeline-year">2026</div>
+      <div>
+        <p class="timeline-title">Sound Recordist &mdash; The Last Tenant</p>
+        <p class="timeline-detail">Feature film &nbsp;&middot;&nbsp; Production sound mixer</p>
+      </div>
+    </div>
+    <div class="timeline-item fade-up">
+      <div class="timeline-year">2025</div>
+      <div>
+        <p class="timeline-title">Sound Assistant &mdash; The Tao Exorcist</p>
+        <p class="timeline-detail">Theatrical feature &nbsp;&middot;&nbsp; Nationwide release</p>
+      </div>
+    </div>
+    <div class="timeline-item fade-up">
+      <div class="timeline-year">2024&ndash;2025</div>
+      <div>
+        <p class="timeline-title">Boom Operator &mdash; Drama Productions</p>
+        <p class="timeline-detail">Granny Must Die (Raindance) &nbsp;&middot;&nbsp; Dean Dad (DaAi TV) &nbsp;&middot;&nbsp; Male Mansion &nbsp;&middot;&nbsp; Ritual Murder</p>
+      </div>
+    </div>
+    <div class="timeline-item fade-up">
+      <div class="timeline-year">2025</div>
+      <div>
+        <p class="timeline-title">Boom Operator &mdash; Father Dean / A Controversial Entertainer</p>
+        <p class="timeline-detail">Television dramas &nbsp;&middot;&nbsp; DaAi Television</p>
+      </div>
+    </div>
+    <div class="timeline-item fade-up">
+      <div class="timeline-year">2023</div>
+      <div>
+        <p class="timeline-title">Sound Recordist &mdash; Television &amp; Music Video</p>
+        <p class="timeline-detail">Spicy House (TV) &nbsp;&middot;&nbsp; Multiple music video projects</p>
+      </div>
+    </div>
+    <div class="timeline-item fade-up">
+      <div class="timeline-year">2022&ndash;2023</div>
+      <div>
+        <p class="timeline-title">Sound Recordist &mdash; Commercial Productions</p>
+        <p class="timeline-detail">20+ advertising campaigns &nbsp;&middot;&nbsp; Samsung &nbsp;&middot;&nbsp; PlayStation Taiwan &nbsp;&middot;&nbsp; Political broadcasting</p>
+      </div>
+    </div>
+    <div class="timeline-item fade-up">
+      <div class="timeline-year">2020&ndash;2022</div>
+      <div>
+        <p class="timeline-title">Sound Recordist / Boom Op &mdash; Short Films</p>
+        <p class="timeline-detail">18+ graduate productions at Lingdong University &nbsp;&middot;&nbsp; Red Dot winners: Vote Exchange, Light of Crevice &nbsp;&middot;&nbsp; Grain Rain (intl. selections)</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ CONTACT / FOOTER ══════════════ -->
+<footer id="contact">
+  <div class="footer-top">
     <div>
-      <h1 id="page-title" style="margin:0;">資料庫管理</h1>
-      <div style="font-size:11px;color:var(--tx2);" id="page-subtitle">上傳 Excel → 排序分組 → 下載</div>
+      <p class="footer-cta-label">Get in touch</p>
+      <div class="footer-cta">
+        Let's make<br>something<br><a href="mailto:raysunwu12@gmail.com">sound&nbsp;right.</a>
+      </div>
+    </div>
+    <div class="footer-links">
+      <a href="mailto:raysunwu12@gmail.com">raysunwu12@gmail.com</a>
+      <a href="tel:+61468812145">+61 468 812 145</a>
+      <a href="https://www.instagram.com/sound_reach/" target="_blank" rel="noopener">Instagram</a>
     </div>
   </div>
+  <div class="footer-bottom">
+    <p class="footer-copy">&copy; 2026 PO-JUI WU (Reach) Studio. All rights reserved.</p>
+    <p class="footer-location">Taiwan &nbsp;&middot;&nbsp; Available Worldwide</p>
+  </div>
+</footer>
 
-  <!-- ===== DATABASE ===== -->
-  <section id="section-db" class="section active">
-    <!-- Sorted FIRST -->
-    <div id="sorted-section" style="display:none;" class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-        <h2 style="margin:0;">✅ 排序結果</h2>
-        <div style="display:flex;gap:7px;flex-wrap:wrap;">
-          <button class="btn btn-success btn-sm" onclick="downloadSortedExcel()">⬇️ 下載 Excel</button>
-          <button class="gs-btn" onclick="gsSyncDB('push')">☁️↑ 推送</button>
-        </div>
-      </div>
-      <div id="sorted-preview" style="max-height:480px;overflow-y:auto;"></div>
-    </div>
-    <!-- Upload below -->
-    <div class="card">
-      <h2>上傳模具資料庫 Excel</h2>
-      <div class="upload-zone" onclick="document.getElementById('db-file').click()" ondragover="dragOver(event,this)" ondragleave="this.classList.remove('drag-over')" ondrop="dropFile(event,'db')">
-        <div style="font-size:34px;">📤</div>
-        <div style="font-size:15px;font-weight:600;margin:7px 0;">點擊或拖曳 Excel 檔案</div>
-        <div style="font-size:12px;">欄位：品號、機台、產品、材料、顏色、備注、CAPA、NSF、KST</div>
-      </div>
-      <input type="file" id="db-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="loadDBFile(event)">
-    </div>
-    <!-- DB table -->
-    <div id="db-actions" style="display:none;" class="card">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
-        <button class="btn btn-primary" onclick="sortDatabase()">🔄 自動分類排序</button>
-        <button class="btn btn-success btn-sm" onclick="addDBRow()">➕ 新增品項</button>
-        <button class="btn btn-ghost btn-sm" onclick="clearDB()">🗑️ 清除</button>
-        <button class="gs-btn" onclick="gsSyncDB('pull')">☁️↓ 從 GSheets 匯入</button>
-        <span id="db-count" class="badge b-blue"></span>
-      </div>
-      <div style="overflow-x:auto;" id="db-table-container"></div>
-    </div>
-  </section>
-
-  <!-- ===== HELD ORDERS ===== -->
-  <section id="section-held" class="section">
-    <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-        <h2 style="margin:0;">📦 待出貨 <span id="held-count" class="badge b-orange">0</span></h2>
-        <div style="font-size:12px;color:var(--tx2);">已生產完成但客戶尚未取貨的品項</div>
-      </div>
-      <div id="held-list"></div>
-    </div>
-    <div class="card">
-      <h2>📊 待出貨彙總</h2>
-      <div id="held-summary"></div>
-    </div>
-  </section>
-
-  <!-- ===== SCHEDULE ===== -->
-  <section id="section-schedule" class="section">
-    <div class="tab-bar">
-      <button class="tab-btn active" onclick="switchTab('schedule','orders')">訂單輸入</button>
-      <button class="tab-btn" onclick="switchTab('schedule','gantt')">甘特排程表</button>
-      <button class="tab-btn" onclick="switchTab('schedule','machine')">機台稼動率</button>
-      <button class="tab-btn" onclick="switchTab('schedule','config');renderScheduleConfig()">排程設定</button>
-    </div>
-    <div id="schedule-orders" class="subtab-content active">
-      <div class="card">
-        <h2>新增訂單</h2>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;">
-          <div><label>訂單號碼 <span style="color:var(--tx2);">(選填)</span></label><input id="ord-no" placeholder="ORD-2026-001"></div>
-          <div><label>訂單公司名稱</label><input id="ord-company" placeholder="公司名稱"></div>
-          <div><label>聯絡人</label><input id="ord-contact" placeholder="姓名"></div>
-          <div><label>聯絡電話</label><input id="ord-phone" placeholder="電話"></div>
-          <div><label>下訂日期</label><input id="ord-orderdate" readonly placeholder="選擇日期"></div>
-          <div><label>交貨日期 <span style="color:var(--tx2);">(選填)</span></label><input id="ord-due" readonly placeholder="選擇日期"></div>
-          <div><label>交貨地點</label><input id="ord-location" placeholder="地址"></div>
-          <div style="display:flex;align-items:center;gap:7px;padding-top:18px;">
-            <input type="checkbox" id="ord-urgent" style="width:15px;height:15px;">
-            <label for="ord-urgent" style="margin:0;color:var(--rd);font-weight:600;font-size:13px;">🚨 緊急</label>
-          </div>
-          <div style="grid-column:1/-1;"><label>備注</label><textarea id="ord-note" rows="2" placeholder="訂單備注…" style="resize:vertical;"></textarea></div>
-        </div>
-        <div style="border:1px solid var(--bdr);border-radius:8px;padding:12px;margin-bottom:12px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-            <h3 style="margin:0;">訂單品項</h3>
-            <button class="btn btn-success btn-sm" onclick="addDraftItem()">➕ 新增品項</button>
-          </div>
-          <div style="display:grid;grid-template-columns:2fr 90px auto;gap:6px;margin-bottom:5px;">
-            <span style="font-size:11px;color:var(--tx2);">品號</span>
-            <span style="font-size:11px;color:var(--tx2);">數量</span>
-            <span></span>
-          </div>
-          <div id="draft-items"><div style="color:var(--tx2);font-size:12px;text-align:center;padding:12px;">點擊「新增品項」加入模具品號</div></div>
-        </div>
-        <button class="btn btn-primary" onclick="submitOrder()" style="width:100%;">✅ 確認加入待排程</button>
-      </div>
-      <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-          <h2 style="margin:0;">待排程訂單 <span id="pending-count" class="badge b-blue">0</span></h2>
-          <div style="display:flex;gap:7px;">
-            <button class="btn btn-primary" onclick="generateSchedule()">⚡ 產生排程</button>
-            <button class="btn btn-ghost btn-sm" onclick="clearOrders()">清除</button>
-          </div>
-        </div>
-        <div id="schedule-list"></div>
-      </div>
-    </div>
-    <div id="schedule-gantt" class="subtab-content">
-      <div class="card" id="gantt-controls" style="display:none;">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          <button class="btn btn-success" onclick="exportScheduleExcel()">⬇️ 匯出排程 Excel</button>
-          <button class="btn btn-ghost" onclick="window.print()">🖨️ 列印</button>
-          <span id="schedule-date-range" class="badge b-blue"></span>
-          <button class="gs-btn" onclick="gsSyncSchedule('push')">☁️↑ 推送排程</button>
-        </div>
-      </div>
-      <div id="alerts-container"></div>
-      <div id="gantt-container"><div style="text-align:center;padding:50px;color:var(--tx2);"><div style="font-size:44px;">📅</div><div style="margin-top:10px;">請先加入訂單再產生排程</div></div></div>
-    </div>
-    <div id="schedule-machine" class="subtab-content">
-      <div id="machine-util-container"><div style="text-align:center;padding:50px;color:var(--tx2);"><div style="font-size:44px;">🏭</div><div style="margin-top:10px;">排程產生後顯示稼動率</div></div></div>
-    </div>
-    <div id="schedule-config" class="subtab-content">
-      <div class="card">
-        <h2>⚙️ 排程設定</h2>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:16px;">
-          <div><label>上班時間</label><input type="time" id="cfg-work-start" oninput="updateConfigCapPreview()"></div>
-          <div><label>下班時間</label><input type="time" id="cfg-work-end" oninput="updateConfigCapPreview()"></div>
-          <div><label>休息時間（分鐘）</label><input type="number" id="cfg-break-min" min="0" max="240" placeholder="60" oninput="updateConfigCapPreview()"></div>
-          <div style="display:flex;align-items:center;gap:9px;padding-top:20px;">
-            <input type="checkbox" id="cfg-weekend" style="width:16px;height:16px;">
-            <label for="cfg-weekend" style="margin:0;font-size:13px;">允許假日加班排程</label>
-          </div>
-        </div>
-        <div style="margin-bottom:14px;">
-          <label style="margin-bottom:8px;display:block;">啟用機台</label>
-          <div id="cfg-machines" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
-        </div>
-        <div style="display:flex;gap:9px;align-items:center;">
-          <button class="btn btn-primary" onclick="saveScheduleConfig()">💾 儲存設定</button>
-          <span id="cfg-daily-cap" style="font-size:12px;color:var(--tx2);"></span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== DELIVERY ===== -->
-  <section id="section-delivery" class="section">
-    <div class="card">
-      <h2>每日送貨規劃</h2>
-      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
-        <div><label>選擇日期</label><input id="delivery-date" style="width:190px;" readonly placeholder="選擇日期"></div>
-        <button class="btn btn-primary" onclick="planDelivery()">🚚 產生規劃</button>
-        <button class="btn btn-success" onclick="exportDeliveryExcel()">⬇️ 匯出送貨單</button>
-      </div>
-    </div>
-    <div id="delivery-plan"></div>
-  </section>
-
-  <!-- ===== ORDER SEARCH ===== -->
-  <section id="section-order-search" class="section">
-    <div class="card">
-      <h2>訂單查詢</h2>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px;">
-        <div><label>訂單號碼</label><input id="sq-ordno" placeholder="搜尋…" oninput="searchOrders()"></div>
-        <div><label>公司名稱</label><input id="sq-company" placeholder="搜尋…" oninput="searchOrders()"></div>
-        <div><label>品號</label><input id="sq-partno" placeholder="搜尋…" oninput="searchOrders()"></div>
-        <div><label>交貨日期起</label><input id="sq-from" type="date" onchange="searchOrders()"></div>
-        <div><label>交貨日期迄</label><input id="sq-to" type="date" onchange="searchOrders()"></div>
-        <div style="display:flex;align-items:flex-end;gap:7px;">
-          <button class="btn btn-ghost btn-sm" onclick="clearSearch()">清除</button>
-          <button class="btn btn-primary btn-sm" onclick="selectAllSearch()">全選</button>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
-        <button class="btn btn-success" onclick="previewGoodsNote()">📄 預覽貨單</button>
-        <button class="btn btn-success btn-sm" onclick="exportGoodsNotePDF()">⬇️ 下載 PDF</button>
-        <button class="btn btn-ghost btn-sm" onclick="exportGoodsNoteExcel()">⬇️ Excel</button>
-        <span id="search-count" class="badge b-blue">0 筆</span>
-      </div>
-      <div id="search-results"></div>
-    </div>
-  </section>
-
-  <!-- ===== HISTORY ===== -->
-  <section id="section-history" class="section">
-    <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-        <h2 style="margin:0;">📁 歷史記錄 <span id="history-count" class="badge b-green">0</span></h2>
-        <input id="history-search" placeholder="搜尋訂單號 / 公司…" style="width:220px;" oninput="renderHistory()">
-      </div>
-      <div id="history-list"></div>
-    </div>
-  </section>
-
-  <!-- ===== REPORT ===== -->
-  <section id="section-report" class="section">
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px;" id="report-stats"></div>
-    <div class="card"><h2>資料摘要</h2><div id="report-summary"></div></div>
-  </section>
-
-  <!-- ===== GSYNC ===== -->
-  <section id="section-gsync" class="section">
-    <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
-        <div style="display:flex;align-items:center;gap:9px;">
-          <div class="sync-dot disconnected" id="gs-status-dot" style="width:13px;height:13px;"></div>
-          <div>
-            <div style="font-weight:700;" id="gs-status-text">連線中…</div>
-            <div style="font-size:11px;color:var(--tx2);" id="gs-status-sub">頁面載入後自動同步</div>
-            <div style="font-size:11px;margin-top:3px;">
-              <span class="badge b-green" style="font-size:10px;">🔄 自動同步：開啟中</span>
-              <span style="color:var(--tx2);margin-left:6px;font-size:10px;">每5分鐘推送 + 開頁面自動拉取</span>
-            </div>
-          </div>
-        </div>
-        <div style="display:flex;gap:7px;flex-wrap:wrap;">
-          <button class="btn btn-primary" onclick="testGsConnection()">🔌 測試連線</button>
-          <button class="btn btn-success" onclick="syncAll()">☁️ 全部同步</button>
-          <button class="btn btn-ghost btn-sm" onclick="showAppsScriptCode()">📋 程式碼</button>
-          <button class="btn btn-ghost btn-sm" onclick="window.open(GS_URL+'?action=test','_blank')">🔍 直接測試</button>
-        </div>
-      </div>
-      <div id="gs-diag-box" style="display:none;" class="alert-box alert-warn">
-        <span>⚠️</span>
-        <div style="font-size:12px;"><strong>診斷：</strong>① 點「直接測試」看是否顯示 JSON ② 若看到登入頁 → 存取對象未設「所有人」③ 若錯誤 → 程式碼未正確部署</div>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;">
-      <div class="card" style="padding:14px;"><h3 style="margin-bottom:10px;">🗄️ 資料庫</h3><div style="display:flex;gap:6px;"><button class="gs-btn" style="flex:1;justify-content:center;" onclick="gsSyncDB('push')">↑ 推送</button><button class="gs-btn" style="flex:1;justify-content:center;" onclick="gsSyncDB('pull')">↓ 拉取</button></div><div style="font-size:11px;color:var(--tx2);margin-top:7px;" id="gs-db-last"></div></div>
-      <div class="card" style="padding:14px;"><h3 style="margin-bottom:10px;">📋 訂單</h3><div style="display:flex;gap:6px;"><button class="gs-btn" style="flex:1;justify-content:center;" onclick="gsSyncOrders('push')">↑ 推送</button><button class="gs-btn" style="flex:1;justify-content:center;" onclick="gsSyncOrders('pull')">↓ 拉取</button></div><div style="font-size:11px;color:var(--tx2);margin-top:7px;" id="gs-ord-last"></div></div>
-      <div class="card" style="padding:14px;"><h3 style="margin-bottom:10px;">📅 排程</h3><div style="display:flex;gap:6px;"><button class="gs-btn" style="flex:1;justify-content:center;" onclick="gsSyncSchedule('push')">↑ 推送</button><button class="gs-btn" style="flex:1;justify-content:center;" onclick="gsSyncSchedule('pull')">↓ 拉取</button></div><div style="font-size:11px;color:var(--tx2);margin-top:7px;" id="gs-sch-last"></div></div>
-    </div>
-    <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;">
-        <h2 style="margin:0;">同步紀錄</h2>
-        <button class="btn btn-ghost btn-sm" onclick="clearSyncLog()">清除</button>
-      </div>
-      <div class="sync-log" id="sync-log"><div style="color:var(--tx2);font-size:12px;text-align:center;padding:14px;">尚無同步紀錄</div></div>
-    </div>
-  </section>
-</main>
-
+<!-- ══════════════ SCRIPTS ══════════════ -->
 <script>
-// ── CONSTANTS ──────────────────────────────────
-const GS_URL = 'https://script.google.com/macros/s/AKfycbyx-BLy10Q6N0rJh1wMtcp1w4hGg4ZJH3u7sTu83Vww-0pCXioLaetiMmupX1k4LzXz/exec';
-const MACHINES = [4,10,15,20,30,35,40,60];
-const CYCLE_TIME_BASE = 50, COOLING_TIME = 40;
-const MOLD_CHANGE = {sameMaterial:20,differentMaterial:45,differentTonnageGroup:60};
-const TONNAGE_GROUPS = [[4,10],[15,20,30],[35,40],[60]];
+  // Nav scroll
+  const nav = document.getElementById('main-nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 50);
+  }, { passive: true });
 
-// ── STATE ──────────────────────────────────────
-let dbData=[], sortedData=[], orders=[], completedOrders=[], heldOrders=[], scheduleResult=null;
-let gsConnected=false, syncLog=[];
-let autoBackupTimer=null, editingDBIdx=-1;
-let autoSyncDebounceTimer=null, autoSyncIntervalTimer=null;
-let currentGoodsNoteOrders=[];
-let orderDraftItems=[];
-let scheduleConfig={workStart:'08:00',workEnd:'20:00',breakMin:60,weekendOvertime:false,activeMachines:[4,10,15,20,30,35,40,60]};
-
-// ── INIT ───────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
-  await loadFromStorage();
-  initDatePickers();
-  buildPartNoList();
-  renderOrders();
-  renderDraftItems();
-  searchOrders();
-  renderHistory();
-  renderHeldOrders();
-  renderReport();
-  startAutoBackup(30);
-  // 啟動後台自動同步（不阻塞 UI）
-  autoSyncInit();
-});
-
-async function loadFromStorage(){
-  try{
-    const d=await localforage.getItem('dbData');
-    if(d){
-      // migrate: convert old string ☐/☑ to boolean
-      dbData=d.map(r=>({...r,CAPA:typeof r.CAPA==='boolean'?r.CAPA:toBool(r.CAPA),NSF:typeof r.NSF==='boolean'?r.NSF:toBool(r.NSF),KST:typeof r.KST==='boolean'?r.KST:toBool(r.KST)}));
-      sortedData=dbData;
-    }
-    const ord=await localforage.getItem('orders');
-    if(ord){
-      if(ord.length>0 && ord[0].items===undefined){
-        orders=ord.map(o=>({id:o.id||Date.now(),OrderNo:'',Company:'',Contact:'',Phone:'',Due:o.Due||'',Location:o.Location||'',Urgent:o.Urgent||false,items:[{PartNo:o.PartNo,Qty:o.Qty,Tonnage:o.Tonnage||0,Material:o.Material||'',Product:'',Color:''}],createdAt:new Date().toISOString()}));
-      }else orders=ord;
-    }
-    const sch=await localforage.getItem('scheduleResult'); if(sch)scheduleResult=sch;
-    const comp=await localforage.getItem('completedOrders'); if(comp)completedOrders=comp;
-    const held=await localforage.getItem('heldOrders'); if(held)heldOrders=held;
-    const sc=await localforage.getItem('scheduleConfig'); if(sc)scheduleConfig={...scheduleConfig,...sc};
-  }catch(e){console.warn(e);}
-}
-async function saveToStorage(){
-  await localforage.setItem('dbData',dbData);
-  await localforage.setItem('orders',orders);
-  await localforage.setItem('completedOrders',completedOrders);
-  await localforage.setItem('heldOrders',heldOrders);
-  await localforage.setItem('scheduleConfig',scheduleConfig);
-  if(scheduleResult)await localforage.setItem('scheduleResult',scheduleResult);
-  scheduleAutoSyncPush();
-}
-
-// ── AUTO BACKUP ────────────────────────────────
-function startAutoBackup(min){
-  if(autoBackupTimer)clearInterval(autoBackupTimer);
-  autoBackupTimer=setInterval(doAutoBackup,min*60000);
-  updateBackupBar('尚未備份');
-}
-async function doAutoBackup(){
-  try{
-    await saveToStorage();
-    const key='autoBackup_'+Date.now();
-    await localforage.setItem(key,{dbData,orders,completedOrders,heldOrders,scheduleResult,at:new Date().toISOString()});
-    const keys=(await localforage.keys()).filter(k=>k.startsWith('autoBackup_')).sort();
-    while(keys.length>5)await localforage.removeItem(keys.shift());
-    updateBackupBar(`自動備份 ${nowStr()}`);
-  }catch(e){}
-}
-function updateBackupBar(msg){const el=document.getElementById('backup-bar');if(el)el.textContent='🔄 '+msg;}
-
-// ── NAVIGATION ─────────────────────────────────
-const NAV_T={db:'資料庫管理',schedule:'多天生產排程',delivery:'每日送貨規劃','order-search':'訂單查詢',history:'歷史記錄',held:'待出貨',report:'報表總覽',gsync:'Google Sheets 同步'};
-const NAV_S={db:'上傳 Excel → 排序分組 → 下載',schedule:'訂單排程 + 甘特圖 + 稼動率 + 排程設定',delivery:'依地點分組送貨規劃','order-search':'搜尋訂單 + 輸出貨單',history:'已完成訂單歷史記錄',held:'已生產尚未出貨品項',report:'系統資料統計總覽',gsync:'雙向同步資料庫 / 訂單 / 排程'};
-
-function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.body.classList.remove('sidebar-open');}
-function setBottomActive(el){document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
-function navigate(page){
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  if(event&&event.currentTarget&&event.currentTarget.classList.contains('nav-item'))event.currentTarget.classList.add('active');
-  document.getElementById('section-'+page).classList.add('active');
-  closeSidebar();
-  document.getElementById('page-title').textContent=NAV_T[page]||page;
-  document.getElementById('page-subtitle').textContent=NAV_S[page]||'';
-  if(page==='report')renderReport();
-  if(page==='schedule'&&scheduleResult)renderGantt(scheduleResult);
-  if(page==='order-search')searchOrders();
-  if(page==='history')renderHistory();
-  if(page==='held')renderHeldOrders();
-  if(page==='gsync')renderSyncLog();
-}
-function switchTab(sec,tab){
-  event.currentTarget.parentElement.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('#section-'+sec+' .subtab-content').forEach(c=>c.classList.remove('active'));
-  event.currentTarget.classList.add('active');
-  document.getElementById(sec+'-'+tab).classList.add('active');
-  if(tab==='gantt'&&scheduleResult)renderGantt(scheduleResult);
-  if(tab==='machine'&&scheduleResult)renderMachineUtil(scheduleResult);
-}
-function closeModal(id){document.getElementById(id).classList.remove('open');}
-
-// ── TOAST / LOADING ────────────────────────────
-function toast(msg,type='info',dur=3500){
-  const icons={success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'};
-  const el=document.createElement('div');
-  el.className=`toast toast-${type}`;
-  el.innerHTML=`<span>${icons[type]}</span><span>${msg}</span>`;
-  document.getElementById('toast-container').appendChild(el);
-  setTimeout(()=>el.remove(),dur);
-}
-function loading(v){document.getElementById('loading-overlay').style.display=v?'flex':'none';}
-
-// ── DATE PICKERS ───────────────────────────────
-function initDatePickers(){
-  flatpickr('#ord-orderdate',{locale:'zh_tw',dateFormat:'Y-m-d'});
-  flatpickr('#ord-due',{locale:'zh_tw',dateFormat:'Y-m-d'});
-  flatpickr('#delivery-date',{locale:'zh_tw',dateFormat:'Y-m-d'});
-}
-
-// ── DRAG DROP ──────────────────────────────────
-function dragOver(e,el){e.preventDefault();el.classList.add('drag-over');}
-function dropFile(e,target){e.preventDefault();e.currentTarget.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f&&target==='db')processDBFile(f);}
-
-// ── DB NORMALIZE (9 cols) ─────────────────────
-function get(r,...keys){for(const k of keys){if(r[k]!==undefined&&r[k]!=='')return r[k];}return '';}
-function toBool(v){const s=String(v).trim();return s==='☑'||s==='true'||s==='1'||s==='TRUE'||s==='是'||s==='yes'||s==='YES';}
-function normalizeRow(r){
-  return{
-    PartNo:String(get(r,'品號','PartNo','part_no','PARTNO','料號')).trim(),
-    Tonnage:Number(get(r,'機台','Tonnage','tonnage','噸位','機台需求','TONNAGE'))||0,
-    Product:String(get(r,'產品','Product','product','品名')),
-    Material:String(get(r,'材料','Material','material','MATERIAL')),
-    Color:String(get(r,'顏色','Color','color','COLOR')),
-    Note:String(get(r,'備注','備註','Note','note','REMARK')),
-    CAPA:toBool(get(r,'CAPA','capa')),
-    NSF:toBool(get(r,'NSF','nsf')),
-    KST:toBool(get(r,'KST','kst')),
-  };
-}
-
-// ── DB LOAD ────────────────────────────────────
-function loadDBFile(ev){const f=ev.target.files[0];if(f)processDBFile(f);}
-function processDBFile(file){
-  loading(true);const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const wb=XLSX.read(e.target.result,{type:'binary'});
-      const raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
-      dbData=raw.map(normalizeRow);sortedData=[...dbData];
-      document.getElementById('db-count').textContent=`共 ${dbData.length} 筆`;
-      document.getElementById('db-actions').style.display='block';
-      renderDBTable(dbData);buildPartNoList();saveToStorage();
-      toast(`載入 ${dbData.length} 筆資料`,'success');
-    }catch(err){toast('讀取失敗：'+err.message,'error');}
-    loading(false);
-  };reader.readAsBinaryString(file);
-}
-
-// ── DB RENDER ──────────────────────────────────
-function renderDBTable(data){
-  const c=document.getElementById('db-table-container');
-  if(!data.length){c.innerHTML='<div style="color:var(--tx2);text-align:center;padding:18px;">無資料</div>';return;}
-  let html=`<table class="db-tbl"><thead><tr>
-    <th>品號</th><th>機台(T)</th><th>產品</th><th>材料</th><th>顏色</th><th>備注</th><th>CAPA</th><th>NSF</th><th>KST</th><th>操作</th>
-  </tr></thead><tbody>`;
-  data.forEach((r,i)=>{
-    const cb=v=>v?'<span style="color:var(--gr);font-size:16px;" title="是">☑</span>':'<span style="color:var(--tx2);font-size:16px;" title="否">☐</span>';
-    html+=`<tr>
-      <td style="color:var(--ac);font-weight:600;">${r.PartNo}</td>
-      <td><span class="badge b-blue">${r.Tonnage||'—'}T</span></td>
-      <td>${r.Product||''}</td><td>${r.Material||''}</td><td>${r.Color||''}</td>
-      <td>${r.Note||''}</td><td style="text-align:center;">${cb(r.CAPA)}</td><td style="text-align:center;">${cb(r.NSF)}</td><td style="text-align:center;">${cb(r.KST)}</td>
-      <td style="white-space:nowrap;">
-        <button class="btn btn-ghost btn-sm" onclick="openEditDB(${i})">✏️</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteDBRow(${i})">✕</button>
-      </td></tr>`;
-  });
-  html+='</tbody></table>';c.innerHTML=html;
-}
-
-// ── DB SORT ────────────────────────────────────
-function sortDatabase(){
-  loading(true);
-  setTimeout(()=>{
-    const groups={};
-    dbData.forEach(r=>{const m=r.Material||'未知';if(!groups[m])groups[m]=[];groups[m].push(r);});
-    Object.keys(groups).forEach(m=>groups[m].sort((a,b)=>a.Tonnage-b.Tonnage));
-    const mats=Object.keys(groups).sort((a,b)=>(groups[a][0].Tonnage||0)-(groups[b][0].Tonnage||0));
-    sortedData=[];mats.forEach(m=>sortedData.push(...groups[m]));
-    renderSortedPreview(groups,mats);
-    document.getElementById('sorted-section').style.display='block';
-    renderDBTable(sortedData);saveToStorage();
-    toast(`排序完成！${mats.length} 種材料 ${sortedData.length} 筆`,'success');
-    loading(false);
-  },200);
-}
-
-function renderSortedPreview(groups,mats){
-  let html='';
-  mats.forEach(mat=>{
-    const rows=groups[mat];
-    html+=`<div class="mat-header"><span style="font-weight:700;color:var(--gr);">● ${mat}</span><span class="badge b-green">${rows.length} 筆</span></div>
-    <table class="db-tbl" style="margin-bottom:8px;"><thead><tr>
-      <th>品號</th><th>機台</th><th>產品</th><th>材料</th><th>顏色</th><th>備注</th><th>CAPA</th><th>NSF</th><th>KST</th>
-    </tr></thead><tbody>`;
-    rows.forEach(r=>{
-      const cb=v=>v?'<span style="color:var(--gr);font-size:15px;">☑</span>':'<span style="color:var(--tx2);font-size:15px;">☐</span>';
-      html+=`<tr><td style="color:var(--ac);font-weight:600;">${r.PartNo}</td>
-        <td><span class="badge b-blue">${r.Tonnage||'—'}T</span></td>
-        <td>${r.Product||''}</td><td>${r.Material||''}</td><td>${r.Color||''}</td>
-        <td>${r.Note||''}</td>
-        <td style="text-align:center;">${cb(r.CAPA)}</td>
-        <td style="text-align:center;">${cb(r.NSF)}</td>
-        <td style="text-align:center;">${cb(r.KST)}</td></tr>`;
-    });
-    html+='</tbody></table>';
-  });
-  document.getElementById('sorted-preview').innerHTML=html;
-}
-
-function downloadSortedExcel(){
-  if(!sortedData.length){toast('請先排序','warning');return;}
-  const rows=[['品號','機台','產品','材料','顏色','備注','CAPA','NSF','KST']];
-  const ck=v=>v?'☑':'☐';
-  sortedData.forEach(r=>rows.push([r.PartNo,r.Tonnage,r.Product,r.Material,r.Color,r.Note,ck(r.CAPA),ck(r.NSF),ck(r.KST)]));
-  const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'排序結果');XLSX.writeFile(wb,`昌葳_資料庫_${today()}.xlsx`);
-  toast('已下載','success');
-}
-
-// ── DB EDIT ────────────────────────────────────
-function openEditDB(idx){
-  editingDBIdx=idx;
-  const r=idx===-1?{}:(sortedData[idx]||dbData[idx]||{});
-  const textCols=[{k:'PartNo',l:'品號'},{k:'Tonnage',l:'機台(T)',t:'number'},{k:'Product',l:'產品'},{k:'Material',l:'材料'},{k:'Color',l:'顏色'},{k:'Note',l:'備注'}];
-  const boolCols=[{k:'CAPA',l:'CAPA'},{k:'NSF',l:'NSF'},{k:'KST',l:'KST'}];
-  document.getElementById('db-edit-fields').innerHTML=
-    textCols.map(c=>`<div><label>${c.l}</label><input id="dbedit-${c.k}" type="${c.t||'text'}" value="${r[c.k]??''}"></div>`).join('')+
-    boolCols.map(c=>`<div style="display:flex;flex-direction:column;justify-content:center;"><label style="margin-bottom:6px;">${c.l}</label><label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:14px;"><input id="dbedit-${c.k}" type="checkbox" style="width:18px;height:18px;cursor:pointer;" ${r[c.k]?'checked':''}><span>${c.l}</span></label></div>`).join('');
-  document.getElementById('modal-db-title').textContent=idx===-1?'新增品項':'編輯：'+(r.PartNo||'');
-  document.getElementById('modal-db-edit').classList.add('open');
-}
-function saveDBEdit(){
-  const r={
-    PartNo:document.getElementById('dbedit-PartNo').value.trim(),
-    Tonnage:Number(document.getElementById('dbedit-Tonnage').value)||0,
-    Product:document.getElementById('dbedit-Product').value,
-    Material:document.getElementById('dbedit-Material').value,
-    Color:document.getElementById('dbedit-Color').value,
-    Note:document.getElementById('dbedit-Note').value,
-    CAPA:document.getElementById('dbedit-CAPA').checked,
-    NSF:document.getElementById('dbedit-NSF').checked,
-    KST:document.getElementById('dbedit-KST').checked,
-  };
-  if(!r.PartNo){toast('品號不能空白','warning');return;}
-  if(editingDBIdx===-1){dbData.push(r);sortedData.push(r);}
-  else{dbData[editingDBIdx]=r;if(sortedData[editingDBIdx])sortedData[editingDBIdx]=r;}
-  renderDBTable(sortedData.length?sortedData:dbData);
-  document.getElementById('db-count').textContent=`共 ${dbData.length} 筆`;
-  buildPartNoList();saveToStorage();closeModal('modal-db-edit');toast('已儲存','success');
-}
-function addDBRow(){editingDBIdx=-1;openEditDB(-1);}
-function deleteDBRow(idx){
-  if(!confirm('確定刪除？'))return;
-  sortedData.splice(idx,1);dbData.splice(idx,1);
-  renderDBTable(sortedData.length?sortedData:dbData);
-  document.getElementById('db-count').textContent=`共 ${dbData.length} 筆`;
-  saveToStorage();toast('已刪除','info');
-}
-function clearDB(){if(!confirm('確定清除？'))return;dbData=[];sortedData=[];document.getElementById('db-actions').style.display='none';document.getElementById('sorted-section').style.display='none';saveToStorage();toast('已清除','info');}
-
-
-// ── ORDERS – DRAFT ─────────────────────────────
-function buildPartNoList(){/* autocomplete now handled by onPnInput */}
-function addDraftItem(){
-  orderDraftItems.push({PartNo:'',Qty:1,Tonnage:0,Material:'',Product:'',Color:''});
-  renderDraftItems();
-}
-function removeDraftItem(idx){orderDraftItems.splice(idx,1);renderDraftItems();}
-function renderDraftItems(){
-  const c=document.getElementById('draft-items');
-  if(!orderDraftItems.length){c.innerHTML='<div style="color:var(--tx2);font-size:12px;text-align:center;padding:12px;">點擊「新增品項」加入模具品號</div>';return;}
-  c.innerHTML=orderDraftItems.map((item,i)=>`
-    <div class="item-row">
-      <div class="pn-wrap">
-        <input type="text" placeholder="輸入品號搜尋…" value="${item.PartNo}"
-          id="pn-input-${i}"
-          oninput="onPnInput(this,${i})"
-          onkeydown="onPnKeydown(event,${i})"
-          onfocus="onPnInput(this,${i})"
-          onblur="setTimeout(()=>hidePnDrop(${i}),200)"
-          autocomplete="off">
-        <div class="pn-dropdown" id="pn-drop-${i}"></div>
-      </div>
-      <input type="number" placeholder="數量" value="${item.Qty}" min="1"
-        oninput="orderDraftItems[${i}].Qty=Number(this.value)||1">
-      <button class="btn btn-danger btn-sm" onclick="removeDraftItem(${i})">✕</button>
-    </div>
-    ${item.PartNo&&item.Material?`<div style="font-size:11px;color:var(--tx2);margin-bottom:5px;padding-left:2px;">📦 ${item.Material} | ${item.Tonnage}T${item.Color?' | 🎨'+item.Color:''}${item.Product?' | '+item.Product:''}</div>`:''}
-  `).join('');
-}
-let pnCursorIdx=-1;
-function onPnInput(el,idx){
-  orderDraftItems[idx].PartNo=el.value;
-  const q=el.value.trim().toLowerCase();
-  const drop=document.getElementById('pn-drop-'+idx);
-  if(!drop)return;
-  if(!q){drop.classList.remove('show');return;}
-  const matches=sortedData.filter(r=>r.PartNo.toLowerCase().includes(q)||
-    (r.Product&&r.Product.toLowerCase().includes(q))||
-    (r.Material&&r.Material.toLowerCase().includes(q))
-  ).slice(0,30);
-  if(!matches.length){drop.classList.remove('show');return;}
-  pnCursorIdx=-1;
-  drop.innerHTML=matches.map(r=>`
-    <div class="pn-opt" onmousedown="selectPn(${idx},'${r.PartNo.replace(/'/g,"\\'")}')">
-      <strong>${highlight(r.PartNo,q)}</strong>
-      <span>${r.Tonnage?r.Tonnage+'T':''} ${r.Material||''} ${r.Color||''} ${r.Product||''}</span>
-    </div>`).join('');
-  drop.classList.add('show');
-}
-function highlight(str,q){
-  if(!q)return str;
-  const re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
-  return str.replace(re,'<mark style="background:rgba(88,166,255,.35);color:var(--tx);border-radius:2px;">$1</mark>');
-}
-function selectPn(idx,pn){
-  orderDraftItems[idx].PartNo=pn;
-  const r=sortedData.find(d=>d.PartNo===pn);
-  if(r){orderDraftItems[idx].Tonnage=r.Tonnage;orderDraftItems[idx].Material=r.Material;orderDraftItems[idx].Product=r.Product;orderDraftItems[idx].Color=r.Color;}
-  renderDraftItems();
-  // focus qty of that row
-  setTimeout(()=>{const q=document.querySelectorAll('.item-row input[type=number]')[idx];if(q)q.focus();},50);
-}
-function hidePnDrop(idx){const d=document.getElementById('pn-drop-'+idx);if(d)d.classList.remove('show');}
-function onPnKeydown(e,idx){
-  const drop=document.getElementById('pn-drop-'+idx);
-  if(!drop||!drop.classList.contains('show'))return;
-  const opts=drop.querySelectorAll('.pn-opt');
-  if(e.key==='ArrowDown'){e.preventDefault();pnCursorIdx=Math.min(pnCursorIdx+1,opts.length-1);opts.forEach((o,i)=>o.classList.toggle('active',i===pnCursorIdx));}
-  else if(e.key==='ArrowUp'){e.preventDefault();pnCursorIdx=Math.max(pnCursorIdx-1,0);opts.forEach((o,i)=>o.classList.toggle('active',i===pnCursorIdx));}
-  else if(e.key==='Enter'&&pnCursorIdx>=0){e.preventDefault();opts[pnCursorIdx].dispatchEvent(new MouseEvent('mousedown'));}
-  else if(e.key==='Escape'){hidePnDrop(idx);}
-}
-function syncItemDB(idx){
-  const pn=orderDraftItems[idx].PartNo;
-  const r=sortedData.find(d=>d.PartNo===pn);
-  if(r){orderDraftItems[idx].Tonnage=r.Tonnage;orderDraftItems[idx].Material=r.Material;orderDraftItems[idx].Product=r.Product;orderDraftItems[idx].Color=r.Color;}
-  renderDraftItems();
-}
-function submitOrder(){
-  const no=document.getElementById('ord-no').value.trim();
-  const due=document.getElementById('ord-due').value;
-  if(!orderDraftItems.length){toast('請先新增品項','warning');return;}
-  const valid=orderDraftItems.filter(i=>i.PartNo&&i.Qty>0);
-  if(!valid.length){toast('請填入有效品號與數量','warning');return;}
-  valid.forEach(item=>{
-    const r=sortedData.find(d=>d.PartNo===item.PartNo)||{Tonnage:0,Material:'未知',Product:'',Color:''};
-    if(!item.Tonnage)item.Tonnage=r.Tonnage;
-    if(!item.Material)item.Material=r.Material;
-    item.RequiredMachine=MACHINES.find(m=>m>=item.Tonnage)||MACHINES[MACHINES.length-1];
-  });
-  const now=new Date().toISOString();
-  orders.push({
-    id:Date.now(),OrderNo:no||`ORD-${today()}`,
-    Company:document.getElementById('ord-company').value.trim(),
-    Contact:document.getElementById('ord-contact').value.trim(),
-    Phone:document.getElementById('ord-phone').value.trim(),
-    OrderDate:document.getElementById('ord-orderdate').value||today(),
-    Due:due,Location:document.getElementById('ord-location').value.trim(),
-    Note:document.getElementById('ord-note').value.trim(),
-    Urgent:document.getElementById('ord-urgent').checked,
-    items:valid,createdAt:now,updatedAt:now
-  });
-  orderDraftItems=[];
-  ['ord-no','ord-company','ord-contact','ord-phone','ord-location','ord-orderdate','ord-note'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('ord-urgent').checked=false;
-  renderDraftItems();renderOrders();searchOrders();saveToStorage();
-  toast(`訂單加入，${valid.length} 個品項`,'success');
-}
-function renderOrders(){
-  const list=document.getElementById('schedule-list');
-  document.getElementById('pending-count').textContent=orders.length;
-  if(!orders.length){list.innerHTML='<div style="color:var(--tx2);text-align:center;padding:18px;">尚無待排程訂單</div>';return;}
-  list.innerHTML=orders.map((o,i)=>`
-    <div class="order-card ${o.Urgent?'urgent':''}">
-      <div class="order-card-header">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          ${o.Urgent?'<span class="badge b-red">🚨 緊急</span>':''}
-          <strong style="color:var(--ac);">${o.OrderNo}</strong>
-          ${o.Company?`<span class="badge b-purple">${o.Company}</span>`:''}
-          ${o.OrderDate?`<span class="badge b-orange">📅下訂 ${o.OrderDate}</span>`:''}
-          <span class="badge b-yellow">交貨 ${o.Due}</span>
-        </div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap;">
-          <button class="btn btn-success btn-sm" onclick="markOrderComplete('${o.id}')" title="標記完成，移入歷史記錄">✅ 完成</button>
-          <button class="btn btn-warning btn-sm" onclick="markOrderHeld('${o.id}')" title="已生產，等待出貨">📦 已生產</button>
-          <button class="btn btn-ghost btn-sm" onclick="openEditOrder('${o.id}')">✏️</button>
-          <button class="btn btn-danger btn-sm" onclick="removeOrder(${i})">✕</button>
-        </div>
-      </div>
-      <div style="font-size:12px;color:var(--tx2);margin-bottom:5px;">
-        ${o.Contact?`👤${o.Contact} `:''}${o.Phone?`📞${o.Phone} `:''}${o.Location?`📍${o.Location}`:''}
-        ${o.updatedAt?`<span style="float:right;font-size:11px;">最近更新：${new Date(o.updatedAt).toLocaleString('zh-TW')}</span>`:''}
-      </div>
-      ${o.Note?`<div style="font-size:12px;color:var(--yw);margin-bottom:4px;">📝 ${o.Note}</div>`:''}
-      <div style="font-size:12px;">
-        ${o.items.map(it=>`<span style="margin-right:8px;"><span style="color:var(--ac);">${it.PartNo}</span>×${it.Qty} <span class="badge b-blue">${it.Tonnage}T</span></span>`).join('')}
-      </div>
-    </div>`).join('');
-}
-function removeOrder(i){orders.splice(i,1);renderOrders();searchOrders();saveToStorage();}
-function clearOrders(){if(!confirm('清除所有訂單？'))return;orders=[];renderOrders();searchOrders();saveToStorage();}
-
-function markOrderComplete(id){
-  const idx=orders.findIndex(o=>String(o.id)===String(id));
-  if(idx===-1)return;
-  const o={...orders[idx],completedAt:new Date().toISOString()};
-  completedOrders.unshift(o);
-  orders.splice(idx,1);
-  renderOrders();searchOrders();renderHistory();saveToStorage();
-  toast('已移入歷史記錄','success');
-}
-function restoreOrder(id){
-  const idx=completedOrders.findIndex(o=>String(o.id)===String(id));
-  if(idx===-1)return;
-  const o={...completedOrders[idx]};
-  delete o.completedAt;
-  orders.push(o);
-  completedOrders.splice(idx,1);
-  renderOrders();searchOrders();renderHistory();saveToStorage();
-  toast('已還原至待排程訂單','info');
-}
-function deleteHistory(id){
-  if(!confirm('確定永久刪除此歷史訂單？'))return;
-  const idx=completedOrders.findIndex(o=>String(o.id)===String(id));
-  if(idx===-1)return;
-  completedOrders.splice(idx,1);
-  renderHistory();saveToStorage();toast('已刪除','info');
-}
-function renderHistory(){
-  const kw=(document.getElementById('history-search')||{}).value||'';
-  const list=kw?completedOrders.filter(o=>(o.OrderNo+o.Company+o.Contact).toLowerCase().includes(kw.toLowerCase())):completedOrders;
-  document.getElementById('history-count').textContent=completedOrders.length;
-  const c=document.getElementById('history-list');if(!c)return;
-  if(!list.length){c.innerHTML='<div style="color:var(--tx2);text-align:center;padding:24px;">尚無歷史記錄</div>';return;}
-  c.innerHTML=list.map(o=>`
-    <div class="order-card" style="border-color:var(--gr);opacity:.9;">
-      <div class="order-card-header">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <span class="badge b-green">✅ 已完成</span>
-          <strong style="color:var(--ac);">${o.OrderNo}</strong>
-          ${o.Company?`<span class="badge b-purple">${o.Company}</span>`:''}
-          ${o.OrderDate?`<span class="badge b-orange">📅${o.OrderDate}</span>`:''}
-          <span class="badge b-yellow">交貨 ${o.Due}</span>
-        </div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap;">
-          <button class="btn btn-ghost btn-sm" onclick="openEditOrder('${o.id}','history')">✏️ 編輯</button>
-          <button class="btn btn-warning btn-sm" onclick="restoreOrder('${o.id}')">↩️ 還原</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteHistory('${o.id}')">✕</button>
-        </div>
-      </div>
-      <div style="font-size:12px;color:var(--tx2);margin-bottom:4px;">
-        ${o.Contact?`👤${o.Contact} `:''}${o.Phone?`📞${o.Phone} `:''}${o.Location?`📍${o.Location}`:''}
-        <span style="float:right;font-size:11px;">完成：${new Date(o.completedAt).toLocaleString('zh-TW')}</span>
-      </div>
-      ${o.Note?`<div style="font-size:12px;color:var(--yw);margin-bottom:4px;">📝 ${o.Note}</div>`:''}
-      <div style="font-size:12px;">${o.items.map(it=>`<span style="margin-right:8px;"><span style="color:var(--ac);">${it.PartNo}</span>×${it.Qty} <span class="badge b-blue">${it.Tonnage}T</span></span>`).join('')}</div>
-    </div>`).join('');
-}
-
-// ── ORDER EDIT ──────────────────────────────────
-let editOrderId=null,editOrderItems=[],editOrderSource='orders';
-function openEditOrder(id,source='orders'){
-  editOrderSource=source;
-  const pool=source==='history'?completedOrders:source==='held'?heldOrders:orders;
-  const o=pool.find(x=>String(x.id)===String(id));
-  if(!o){toast('找不到訂單','error');return;}
-  editOrderId=id;
-  editOrderItems=JSON.parse(JSON.stringify(o.items||[]));
-  document.getElementById('oe-no').value=o.OrderNo||'';
-  document.getElementById('oe-company').value=o.Company||'';
-  document.getElementById('oe-contact').value=o.Contact||'';
-  document.getElementById('oe-phone').value=o.Phone||'';
-  document.getElementById('oe-orderdate').value=o.OrderDate||'';
-  document.getElementById('oe-due').value=o.Due||'';
-  document.getElementById('oe-location').value=o.Location||'';
-  document.getElementById('oe-urgent').checked=!!o.Urgent;
-  document.getElementById('oe-note').value=o.Note||'';
-  renderEditItems();
-  document.getElementById('modal-order-edit').classList.add('open');
-}
-function renderEditItems(){
-  const c=document.getElementById('oe-items');
-  if(!editOrderItems.length){c.innerHTML='<div style="color:var(--tx2);font-size:12px;text-align:center;padding:10px;">尚無品項</div>';return;}
-  c.innerHTML=editOrderItems.map((it,i)=>`
-    <div style="display:grid;grid-template-columns:2fr 80px 80px auto;gap:6px;align-items:center;margin-bottom:5px;">
-      <input value="${it.PartNo||''}" placeholder="品號" onchange="editOrderItems[${i}].PartNo=this.value;syncEditItem(${i});" style="font-size:12px;padding:5px 8px;">
-      <input type="number" value="${it.Qty||''}" placeholder="數量" min="1" onchange="editOrderItems[${i}].Qty=Number(this.value);" style="font-size:12px;padding:5px 8px;">
-      <input type="number" value="${it.Tonnage||''}" placeholder="機台T" onchange="editOrderItems[${i}].Tonnage=Number(this.value);" style="font-size:12px;padding:5px 8px;">
-      <button class="btn btn-danger btn-sm" onclick="removeEditItem(${i})">✕</button>
-    </div>`).join('');
-}
-function syncEditItem(i){
-  const pn=editOrderItems[i].PartNo;
-  const r=sortedData.find(d=>d.PartNo===pn);
-  if(r){editOrderItems[i].Tonnage=r.Tonnage;editOrderItems[i].Material=r.Material;editOrderItems[i].Product=r.Product;editOrderItems[i].Color=r.Color;}
-  renderEditItems();
-}
-function addEditItem(){editOrderItems.push({PartNo:'',Qty:0,Tonnage:0,Material:'',Product:'',Color:''});renderEditItems();}
-function removeEditItem(i){editOrderItems.splice(i,1);renderEditItems();}
-function saveEditOrder(){
-  const pool=editOrderSource==='history'?completedOrders:editOrderSource==='held'?heldOrders:orders;
-  const idx=pool.findIndex(x=>String(x.id)===String(editOrderId));
-  if(idx===-1){toast('找不到訂單','error');return;}
-  const valid=editOrderItems.filter(i=>i.PartNo&&i.Qty>0);
-  if(!valid.length){toast('請至少填入一個有效品項','warning');return;}
-  valid.forEach(item=>{item.RequiredMachine=MACHINES.find(m=>m>=item.Tonnage)||MACHINES[MACHINES.length-1];});
-  pool[idx]={...pool[idx],
-    OrderNo:document.getElementById('oe-no').value.trim()||pool[idx].OrderNo,
-    Company:document.getElementById('oe-company').value.trim(),
-    Contact:document.getElementById('oe-contact').value.trim(),
-    Phone:document.getElementById('oe-phone').value.trim(),
-    OrderDate:document.getElementById('oe-orderdate').value||pool[idx].OrderDate||'',
-    Due:document.getElementById('oe-due').value||pool[idx].Due,
-    Location:document.getElementById('oe-location').value.trim(),
-    Note:document.getElementById('oe-note').value.trim(),
-    Urgent:document.getElementById('oe-urgent').checked,
-    items:valid,updatedAt:new Date().toISOString()
-  };
-  closeModal('modal-order-edit');
-  renderOrders();searchOrders();renderHistory();renderHeldOrders();renderReport();saveToStorage();
-  toast('訂單已更新','success');
-}
-
-// ── SCHEDULE ───────────────────────────────────
-function generateSchedule(){
-  if(!orders.length){toast('請先加入訂單','warning');return;}
-  loading(true);
-  setTimeout(()=>{
-    try{
-      const flat=orders.flatMap(o=>o.items.map(item=>({
-        OrderNo:o.OrderNo,Company:o.Company,Due:o.Due,Location:o.Location,Urgent:o.Urgent,
-        PartNo:item.PartNo,Qty:item.Qty,Tonnage:item.Tonnage,Material:item.Material,
-        RequiredMachine:item.RequiredMachine||(MACHINES.find(m=>m>=item.Tonnage)||MACHINES[MACHINES.length-1])
-      })));
-      const sorted=[...flat].sort((a,b)=>{
-        if(a.Urgent!==b.Urgent)return b.Urgent-a.Urgent;
-        if(a.Due!==b.Due)return a.Due.localeCompare(b.Due);
-        if(a.Material!==b.Material)return a.Material.localeCompare(b.Material);
-        return a.Tonnage-b.Tonnage;
-      });
-      const startD=new Date();startD.setHours(0,0,0,0);
-      const days=14;
-      // Build horizon skipping weekends unless weekendOvertime is on
-      const horizon=[];let di=0;while(horizon.length<days){const d=new Date(startD);d.setDate(d.getDate()+di);di++;const dow=d.getDay();if(!scheduleConfig.weekendOvertime&&(dow===0||dow===6))continue;horizon.push(dateStr(d));}
-      // dailyCap from scheduleConfig
-      const [sh,sm]=scheduleConfig.workStart.split(':').map(Number);
-      const [eh,em]=scheduleConfig.workEnd.split(':').map(Number);
-      const workSecs=((eh*60+em)-(sh*60+sm)-scheduleConfig.breakMin)*60;
-      const configDailyCap=Math.max(1,Math.floor(workSecs/(CYCLE_TIME_BASE+COOLING_TIME)));
-      const activeMachineList=scheduleConfig.activeMachines||MACHINES;
-      const ms={};activeMachineList.forEach(m=>{ms[m]={lastMaterial:null,lastTonnage:null,jobs:[]};});
-      const alerts=[],unscheduled=[];
-      sorted.forEach(order=>{
-        const elig=activeMachineList.filter(m=>m>=order.RequiredMachine);
-        if(!elig.length){unscheduled.push(order);return;}
-        let best=null,bestScore=Infinity;
-        elig.forEach(m=>{
-          const st=ms[m];let mc=0;
-          if(st.lastMaterial!==null){
-            if(st.lastMaterial===order.Material)mc=MOLD_CHANGE.sameMaterial;
-            else{const lg=TONNAGE_GROUPS.findIndex(g=>g.includes(st.lastTonnage));const cg=TONNAGE_GROUPS.findIndex(g=>g.includes(order.Tonnage));mc=(lg!==cg)?MOLD_CHANGE.differentTonnageGroup:MOLD_CHANGE.differentMaterial;}
-          }
-          const score=mc*100+st.jobs.length;if(score<bestScore){bestScore=score;best=m;}
-        });
-        if(!best){unscheduled.push(order);return;}
-        const st=ms[best];let mc=0;
-        if(st.lastMaterial!==null){if(st.lastMaterial===order.Material)mc=MOLD_CHANGE.sameMaterial;else{const lg=TONNAGE_GROUPS.findIndex(g=>g.includes(st.lastTonnage));const cg=TONNAGE_GROUPS.findIndex(g=>g.includes(order.Tonnage));mc=(lg!==cg)?MOLD_CHANGE.differentTonnageGroup:MOLD_CHANGE.differentMaterial;}}
-        const daysN=Math.ceil(order.Qty/configDailyCap);
-        let si=0;if(st.jobs.length>0){const lj=st.jobs[st.jobs.length-1];si=Math.min(lj.endIdx+1,days-1);}
-        const ei=Math.min(si+daysN-1,days-1);
-        const dueIdx=horizon.indexOf(order.Due);
-        if(dueIdx>=0&&ei>dueIdx)alerts.push({type:'warning',msg:`${order.PartNo} 可能無法在 ${order.Due} 前完成`});
-        if(st.jobs.filter(j=>j.material!==order.Material).length>=5)alerts.push({type:'warning',msg:`機台 ${best}T 換模次數過多`});
-        st.jobs.push({OrderNo:order.OrderNo,PartNo:order.PartNo,Material:order.Material,Tonnage:order.Tonnage,Qty:order.Qty,startDate:horizon[si]||horizon[0],endDate:horizon[ei]||horizon[days-1],startIdx:si,endIdx:ei,moldChangeMin:mc,dailyPcs:configDailyCap,urgent:order.Urgent,location:order.Location,Due:order.Due,material:order.Material,company:order.Company});
-        st.lastMaterial=order.Material;st.lastTonnage=order.Tonnage;
-      });
-      activeMachineList.forEach(m=>{const st=ms[m];const used=new Set();st.jobs.forEach(j=>{for(let d=j.startIdx;d<=j.endIdx;d++)used.add(d);});st.utilization=used.size/days;if(st.utilization>0.95)alerts.push({type:'error',msg:`機台 ${m}T 稼動率 ${Math.round(st.utilization*100)}% 過高`});});
-      scheduleResult={horizon,machineSchedule:ms,activeMachines:activeMachineList,orders:sorted,alerts,unscheduled};
-      saveToStorage();
-      document.querySelectorAll('#section-schedule .tab-btn').forEach(b=>b.classList.remove('active'));
-      document.querySelectorAll('#section-schedule .subtab-content').forEach(c=>c.classList.remove('active'));
-      document.querySelectorAll('#section-schedule .tab-btn')[1].classList.add('active');
-      document.getElementById('schedule-gantt').classList.add('active');
-      renderGantt(scheduleResult);renderMachineUtil(scheduleResult);renderAlerts(alerts);
-      toast(`排程完成！${sorted.length} 品項`,'success');if(alerts.length)toast(`⚠️ ${alerts.length} 警示`,'warning');
-    }catch(e){toast('排程失敗：'+e.message,'error');}loading(false);
-  },300);
-}
-
-function renderGantt(result){
-  const c=document.getElementById('gantt-container');
-  document.getElementById('gantt-controls').style.display='block';
-  document.getElementById('schedule-date-range').textContent=`${result.horizon[0]} ~ ${result.horizon[result.horizon.length-1]}`;
-  const colors=['#1a3a5c','#1a3a2a','#3a2a0a','#2a1a3a','#1a2a1a','#3a1a2a','#1a1a3a','#2a3a1a'];
-  const mc={};let ci=0;const dn=['日','一','二','三','四','五','六'];
-  const machineList=result.activeMachines||MACHINES;
-  let html=`<div style="overflow-x:auto;"><table class="gantt-table"><thead><tr><th>機台</th><th>品項</th>`;
-  result.horizon.forEach(d=>{const day=new Date(d);const isWknd=day.getDay()===0||day.getDay()===6;html+=`<th style="${isWknd?'background:rgba(255,100,100,.15);':''}">${d.slice(5)}<br><small>${dn[day.getDay()]}</small></th>`;});
-  html+='</tr></thead><tbody>';
-  machineList.forEach(m=>{
-    const st=result.machineSchedule[m];
-    if(!st.jobs.length){html+=`<tr><td style="font-weight:700;color:var(--ac);">${m}T</td><td colspan="${result.horizon.length+1}" style="color:var(--tx2);">無排程</td></tr>`;return;}
-    st.jobs.forEach((job,ji)=>{
-      if(!mc[job.Material]){mc[job.Material]=colors[ci%colors.length];ci++;}
-      const bg=mc[job.Material];
-      html+=`<tr>`;
-      if(ji===0)html+=`<td rowspan="${st.jobs.length}" style="font-weight:700;color:var(--ac);text-align:center;">${m}T<br><small style="color:${(st.utilization||0)>0.95?'var(--rd)':(st.utilization||0)>0.8?'var(--yw)':'var(--gr)'}">${Math.round((st.utilization||0)*100)}%</small></td>`;
-      html+=`<td style="font-size:11px;">${job.urgent?'🚨':''}<strong>${job.PartNo}</strong><br><span style="color:var(--tx2);">${job.Material}</span></td>`;
-      result.horizon.forEach((_,di)=>{
-        if(di>=job.startIdx&&di<=job.endIdx){const pct=job.endIdx>job.startIdx?Math.round((di-job.startIdx+1)/(job.endIdx-job.startIdx+1)*100):100;html+=`<td style="background:${bg};border:1px solid rgba(255,255,255,.1);"><div style="font-size:10px;color:rgba(255,255,255,.9);">${pct}%</div></td>`;}else html+='<td></td>';
-      });html+='</tr>';
-    });
-  });
-  html+='</tbody></table></div><div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:7px;">';
-  Object.entries(mc).forEach(([mat,color])=>{html+=`<div style="display:flex;align-items:center;gap:4px;"><div style="width:14px;height:14px;border-radius:3px;background:${color};"></div><span style="font-size:11px;">${mat}</span></div>`;});
-  html+='</div>';c.innerHTML=html;
-}
-
-function renderMachineUtil(result){
-  const c=document.getElementById('machine-util-container');
-  const machineList=result.activeMachines||MACHINES;
-  let html='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">';
-  machineList.forEach(m=>{
-    const st=result.machineSchedule[m];const util=st.utilization||0;const pct=Math.round(util*100);
-    const color=util>0.95?'var(--rd)':util>0.8?'var(--yw)':'var(--gr)';
-    html+=`<div class="stat-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><h3>機台 ${m}T</h3><span style="font-size:13px;font-weight:700;color:${color};">${pct}%</span></div>
-      <div class="u-bar" style="margin-bottom:10px;"><div class="u-fill" style="width:${pct}%;background:${color};"></div></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:12px;">
-        <div><div style="color:var(--tx2);">品項</div><div style="font-weight:700;">${st.jobs.length}</div></div>
-        <div><div style="color:var(--tx2);">換模</div><div style="font-weight:700;color:${(st.jobs.length-1)>=5?'var(--rd)':'var(--tx)'}">${Math.max(0,st.jobs.length-1)}</div></div>
-        <div><div style="color:var(--tx2);">總產</div><div style="font-weight:700;">${st.jobs.reduce((s,j)=>s+j.Qty,0).toLocaleString()}</div></div>
-      </div></div>`;
-  });html+='</div>';c.innerHTML=html;
-}
-
-function renderAlerts(alerts){
-  const c=document.getElementById('alerts-container');if(!alerts.length){c.innerHTML='';return;}
-  c.innerHTML=alerts.map(a=>`<div class="alert-box ${a.type==='error'?'alert-err':'alert-warn'}"><span>${a.type==='error'?'❌':'⚠️'}</span><span>${a.msg}</span></div>`).join('');
-}
-
-function exportScheduleExcel(){
-  if(!scheduleResult){toast('尚無排程','warning');return;}
-  const wb=XLSX.utils.book_new();
-  const rows=[['機台','訂單號','品號','材料','數量','開始','結束','換模min','日產能','緊急']];
-  const machList=scheduleResult.activeMachines||MACHINES;
-  machList.forEach(m=>{if(scheduleResult.machineSchedule[m])scheduleResult.machineSchedule[m].jobs.forEach(j=>{rows.push([m,j.OrderNo||'',j.PartNo,j.Material,j.Qty,j.startDate,j.endDate,j.moldChangeMin,j.dailyPcs,j.urgent?'是':'否']);});});
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'機台排程');
-  const machList2=scheduleResult.activeMachines||MACHINES;
-  const daily=[['日期',...machList2.map(m=>`機台${m}T`)]];
-  scheduleResult.horizon.forEach((date,di)=>{const row=[date];machList2.forEach(m=>{const st=scheduleResult.machineSchedule[m];const active=st?st.jobs.filter(j=>di>=j.startIdx&&di<=j.endIdx):[];row.push(active.map(j=>j.PartNo).join(',')||'-');});daily.push(row);});
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(daily),'每日甘特');
-  XLSX.writeFile(wb,`昌葳_排程_${today()}.xlsx`);toast('已下載排程 Excel','success');
-}
-
-// ── DELIVERY ───────────────────────────────────
-function planDelivery(){
-  const date=document.getElementById('delivery-date').value;
-  if(!date){toast('請選擇日期','warning');return;}
-  const due=orders.filter(o=>o.Due===date);
-  if(!due.length){document.getElementById('delivery-plan').innerHTML=`<div class="card" style="text-align:center;color:var(--tx2);padding:36px;"><div style="font-size:40px;">📭</div><div>${date} 無送貨訂單</div></div>`;return;}
-  const groups={};due.forEach(o=>{const loc=o.Location||'未指定';if(!groups[loc])groups[loc]=[];groups[loc].push(o);});
-  let html=`<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;"><h2 style="margin:0;">📦 ${date} 送貨清單</h2><span class="badge b-blue">${Object.keys(groups).length} 個地點</span></div>`;
-  let rn=1;
-  Object.entries(groups).forEach(([loc,os])=>{
-    const total=os.reduce((s,o)=>s+o.items.reduce((ss,i)=>ss+i.Qty,0),0);
-    html+=`<div class="delivery-card"><div style="display:flex;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;"><div style="font-weight:700;font-size:15px;">📍 路線 ${rn++}：${loc}</div><span class="badge b-green">共 ${total} 件</span></div>`;
-    os.forEach(o=>{
-      html+=`<div style="padding:8px;background:var(--bg);border-radius:6px;margin-bottom:6px;">
-        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;margin-bottom:4px;">
-          <strong style="color:var(--ac);">${o.OrderNo}</strong>
-          ${o.Company?`<span>🏢 ${o.Company}</span>`:''}
-          ${o.Contact?`<span>👤 ${o.Contact}</span>`:''}
-          ${o.Phone?`<span>📞 <a href="tel:${o.Phone}" style="color:var(--ac);">${o.Phone}</a></span>`:''}
-          ${o.Urgent?'<span class="badge b-red">緊急</span>':''}
-        </div>
-        <div style="font-size:12px;">${o.items.map(i=>`<span style="margin-right:8px;color:var(--ac);">${i.PartNo}</span>×${i.Qty}`).join(' ')}</div>
-      </div>`;
-    });html+='</div>';
-  });html+='</div>';
-  document.getElementById('delivery-plan').innerHTML=html;
-}
-function exportDeliveryExcel(){
-  const date=document.getElementById('delivery-date').value;if(!date){toast('請選擇日期','warning');return;}
-  const rows=[['訂單號','公司','聯絡人','電話','地點','品號','數量','緊急']];
-  orders.filter(o=>o.Due===date).forEach(o=>{o.items.forEach(i=>rows.push([o.OrderNo,o.Company,o.Contact,o.Phone,o.Location,i.PartNo,i.Qty,o.Urgent?'是':'否']));});
-  const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,`${date}送貨`);XLSX.writeFile(wb,`昌葳_送貨_${date}.xlsx`);toast('已下載','success');
-}
-
-// ── ORDER SEARCH ───────────────────────────────
-function searchOrders(){
-  const no=(document.getElementById('sq-ordno')||{}).value||'';
-  const co=(document.getElementById('sq-company')||{}).value||'';
-  const pn=(document.getElementById('sq-partno')||{}).value||'';
-  const fr=(document.getElementById('sq-from')||{}).value||'';
-  const to=(document.getElementById('sq-to')||{}).value||'';
-  const res=orders.filter(o=>{
-    if(no&&!o.OrderNo.toLowerCase().includes(no.toLowerCase()))return false;
-    if(co&&!(o.Company||'').toLowerCase().includes(co.toLowerCase()))return false;
-    if(pn&&!o.items.some(i=>i.PartNo.toLowerCase().includes(pn.toLowerCase())))return false;
-    if(fr&&o.Due<fr)return false;if(to&&o.Due>to)return false;return true;
-  });
-  const cnt=document.getElementById('search-count');if(cnt)cnt.textContent=`${res.length} 筆`;
-  const c=document.getElementById('search-results');if(!c)return;
-  if(!res.length){c.innerHTML='<div style="color:var(--tx2);text-align:center;padding:18px;">無符合訂單</div>';return;}
-  c.innerHTML=res.map(o=>`
-    <div class="search-row">
-      <input type="checkbox" class="goods-check" value="${o.id}">
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">
-          ${o.Urgent?'<span class="badge b-red">🚨</span>':''}
-          <strong style="color:var(--ac);">${o.OrderNo}</strong>
-          ${o.Company?`<span class="badge b-purple">${o.Company}</span>`:''}
-          ${o.OrderDate?`<span class="badge b-orange">📅${o.OrderDate}</span>`:''}
-          <span class="badge b-yellow">交貨 ${o.Due}</span>
-          <span class="badge b-blue">${o.items.length} 品項</span>
-        </div>
-        <div style="font-size:12px;color:var(--tx2);">
-          ${o.Contact?`👤${o.Contact} `:''}${o.Phone?`📞${o.Phone} `:''}${o.Location?`📍${o.Location}`:''}
-          ${o.updatedAt?`<span style="float:right;font-size:11px;">更新：${new Date(o.updatedAt).toLocaleString('zh-TW')}</span>`:''}
-        </div>
-        ${o.Note?`<div style="font-size:12px;color:var(--yw);">📝 ${o.Note}</div>`:''}
-        <div style="font-size:12px;margin-top:3px;">
-          ${o.items.map(i=>`<span style="margin-right:8px;"><span style="color:var(--ac);">${i.PartNo}</span>×${i.Qty}</span>`).join('')}
-        </div>
-      </div>
-      <button class="btn btn-ghost btn-sm" onclick="openEditOrder('${o.id}')" style="align-self:flex-start;">✏️</button>
-    </div>`).join('');
-}
-function selectAllSearch(){document.querySelectorAll('.goods-check').forEach(cb=>cb.checked=true);}
-function clearSearch(){['sq-ordno','sq-company','sq-partno','sq-from','sq-to'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});searchOrders();}
-function getSelectedOrders(){
-  const checked=[...document.querySelectorAll('.goods-check:checked')].map(cb=>cb.value);
-  if(!checked.length){toast('請先勾選訂單','warning');return null;}
-  return orders.filter(o=>checked.includes(String(o.id)));
-}
-function previewGoodsNote(){
-  const sel=getSelectedOrders();if(!sel)return;
-  currentGoodsNoteOrders=sel;
-  document.getElementById('goods-note-preview').innerHTML=buildGoodsNoteHTML(sel);
-  document.getElementById('modal-goods-note').classList.add('open');
-}
-function buildGoodsNoteHTML(sel){
-  let html=`<div style="font-size:13px;"><div style="text-align:center;font-size:18px;font-weight:700;margin-bottom:3px;">昌葳模具有限公司</div><div style="text-align:center;font-size:13px;margin-bottom:12px;color:var(--tx2);">出貨單 / 貨單 ｜列印日期：${new Date().toLocaleDateString('zh-TW')}</div>`;
-  sel.forEach(o=>{
-    html+=`<div style="border:1px solid var(--bdr);border-radius:8px;padding:12px;margin-bottom:12px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px;font-size:12px;">
-        <div><span style="color:var(--tx2);">訂單號：</span><strong>${o.OrderNo}</strong></div>
-        <div><span style="color:var(--tx2);">交貨日：</span><strong>${o.Due}</strong></div>
-        <div><span style="color:var(--tx2);">客戶：</span>${o.Company||'-'}</div>
-        <div><span style="color:var(--tx2);">聯絡人：</span>${o.Contact||'-'}</div>
-        <div><span style="color:var(--tx2);">電話：</span>${o.Phone||'-'}</div>
-        <div><span style="color:var(--tx2);">地址：</span>${o.Location||'-'}</div>
-      </div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead>
-        <tr style="background:var(--bg2);"><th style="padding:5px 8px;border:1px solid var(--bdr);text-align:left;">品號</th>
-        <th style="padding:5px 8px;border:1px solid var(--bdr);">產品</th><th style="padding:5px 8px;border:1px solid var(--bdr);">材料</th>
-        <th style="padding:5px 8px;border:1px solid var(--bdr);">顏色</th><th style="padding:5px 8px;border:1px solid var(--bdr);">數量</th>
-        </tr></thead><tbody>`;
-    o.items.forEach(i=>{
-      const d=sortedData.find(r=>r.PartNo===i.PartNo)||{};
-      html+=`<tr><td style="padding:5px 8px;border:1px solid var(--bdr);font-weight:600;color:var(--ac);">${i.PartNo}</td>
-        <td style="padding:5px 8px;border:1px solid var(--bdr);text-align:center;">${d.Product||i.Product||'-'}</td>
-        <td style="padding:5px 8px;border:1px solid var(--bdr);text-align:center;">${d.Material||i.Material||'-'}</td>
-        <td style="padding:5px 8px;border:1px solid var(--bdr);text-align:center;">${d.Color||i.Color||'-'}</td>
-        <td style="padding:5px 8px;border:1px solid var(--bdr);text-align:center;font-weight:700;">${i.Qty}</td></tr>`;
-    });
-    html+='</tbody></table></div>';
-  });
-  html+='</div>';return html;
-}
-function exportGoodsNotePDF(){
-  const sel=currentGoodsNoteOrders.length?currentGoodsNoteOrders:getSelectedOrders();
-  if(!sel||!sel.length)return;
-  const printDate=new Date().toLocaleDateString('zh-TW');
-  let body='';
-  sel.forEach(o=>{
-    const ck=v=>v?'☑':'☐';
-    const itemRows=o.items.map(i=>{
-      const d=sortedData.find(r=>r.PartNo===i.PartNo)||{};
-      return `<tr>
-        <td>${i.PartNo}</td>
-        <td>${d.Product||i.Product||''}</td>
-        <td>${d.Material||i.Material||''}</td>
-        <td>${d.Color||i.Color||''}</td>
-        <td style="text-align:center;">${i.Qty}</td>
-        <td style="text-align:center;">${i.Tonnage||''}T</td>
-        <td>${d.Note||''}</td>
-        <td style="text-align:center;">${ck(d.CAPA)}</td>
-        <td style="text-align:center;">${ck(d.NSF)}</td>
-        <td style="text-align:center;">${ck(d.KST)}</td>
-      </tr>`;
-    }).join('');
-    body+=`
-    <div class="order-block">
-      <div class="company-title">昌葳模具有限公司</div>
-      <div class="sub-title">出貨單　列印日期：${printDate}</div>
-      <table class="info-table">
-        <tr><td class="lbl">訂單號碼</td><td>${o.OrderNo}</td><td class="lbl">下訂日期</td><td>${o.OrderDate||''}</td></tr>
-        <tr><td class="lbl">交貨日期</td><td>${o.Due}</td><td class="lbl">緊急</td><td>${o.Urgent?'🚨 是':''}</td></tr>
-        <tr><td class="lbl">客戶公司</td><td>${o.Company||''}</td><td class="lbl">聯絡人</td><td>${o.Contact||''}</td></tr>
-        <tr><td class="lbl">聯絡電話</td><td>${o.Phone||''}</td><td class="lbl">交貨地點</td><td>${o.Location||''}</td></tr>
-        ${o.Note?`<tr><td class="lbl">備注</td><td colspan="3">${o.Note}</td></tr>`:''}
-      </table>
-      <table class="items-table">
-        <thead><tr><th>品號</th><th>產品</th><th>材料</th><th>顏色</th><th>數量</th><th>機台</th><th>備注</th><th>CAPA</th><th>NSF</th><th>KST</th></tr></thead>
-        <tbody>${itemRows}</tbody>
-      </table>
-      <div class="sign-row">
-        <span>簽收：___________________________</span>
-        <span>日期：___________________________</span>
-      </div>
-    </div>`;
-  });
-  const html=`<!DOCTYPE html><html lang="zh-TW"><head>
-  <meta charset="UTF-8">
-  <title>昌葳模具 貨單 ${printDate}</title>
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Microsoft JhengHei','蘋方-繁',sans-serif;font-size:12px;color:#000;background:#fff;}
-    .order-block{padding:20px 24px;page-break-after:always;}
-    .order-block:last-child{page-break-after:auto;}
-    .company-title{font-size:20px;font-weight:700;text-align:center;margin-bottom:2px;}
-    .sub-title{font-size:11px;text-align:center;color:#555;margin-bottom:12px;}
-    .info-table{width:100%;border-collapse:collapse;margin-bottom:12px;}
-    .info-table td{padding:4px 8px;border:1px solid #ccc;font-size:12px;}
-    .info-table .lbl{background:#f0f0f0;font-weight:600;width:80px;}
-    .items-table{width:100%;border-collapse:collapse;margin-bottom:14px;}
-    .items-table th{background:#e8e8e8;padding:5px 6px;border:1px solid #bbb;font-size:11px;font-weight:700;}
-    .items-table td{padding:5px 6px;border:1px solid #ccc;font-size:11px;}
-    .sign-row{display:flex;justify-content:space-between;padding-top:16px;border-top:1px solid #ccc;font-size:12px;}
-    @media print{@page{size:A4;margin:10mm;}body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
-  </style>
-  </head><body>${body}
-  <script>window.onload=function(){window.print();}<\/script>
-  </body></html>`;
-  const w=window.open('','_blank','width=900,height=700');
-  w.document.write(html);w.document.close();
-  toast(`已開啟 ${sel.length} 張 PDF 貨單，請選擇「另存為 PDF」`,'success');
-}
-function exportGoodsNoteExcel(){
-  const sel=currentGoodsNoteOrders.length?currentGoodsNoteOrders:getSelectedOrders();
-  if(!sel||!sel.length)return;
-  const wb=XLSX.utils.book_new();
-  sel.forEach(o=>{
-    const rows=[['昌葳模具有限公司 出貨單'],[''],
-      ['訂單號',o.OrderNo,'','交貨日',o.Due],
-      ['客戶',o.Company||'','','聯絡人',o.Contact||''],
-      ['電話',o.Phone||'','','地址',o.Location||''],
-      [''],['品號','產品','材料','顏色','數量','機台(T)','備注','CAPA','NSF','KST']
-    ];
-    o.items.forEach(i=>{
-      const d=sortedData.find(r=>r.PartNo===i.PartNo)||{};
-      const ck=v=>v?'☑':'☐';
-      rows.push([i.PartNo,d.Product||i.Product||'',d.Material||i.Material||'',d.Color||i.Color||'',i.Qty,i.Tonnage||'',d.Note||'',ck(d.CAPA),ck(d.NSF),ck(d.KST)]);
-    });
-    rows.push([''],['簽收：________________','','','日期：________________']);
-    const ws=XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols']=[{wch:14},{wch:16},{wch:12},{wch:10},{wch:8},{wch:8},{wch:14},{wch:8},{wch:8},{wch:8}];
-    XLSX.utils.book_append_sheet(wb,ws,(o.OrderNo||'貨單').slice(0,31));
-  });
-  XLSX.writeFile(wb,`昌葳_貨單_${today()}.xlsx`);
-  toast(`已下載 ${sel.length} 張貨單`,'success');closeModal('modal-goods-note');
-}
-
-// ── REPORT ─────────────────────────────────────
-function renderReport(){
-  const tP=sortedData.length,tO=orders.length,urg=orders.filter(o=>o.Urgent).length;
-  const tH=heldOrders.length;
-  const machList=scheduleResult?(scheduleResult.activeMachines||MACHINES):MACHINES;
-  const mU=scheduleResult?machList.filter(m=>scheduleResult.machineSchedule[m]&&scheduleResult.machineSchedule[m].jobs.length>0).length:0;
-  const latestOrder=orders.length?orders.reduce((a,b)=>((b.updatedAt||b.createdAt||'')>(a.updatedAt||a.createdAt||''))?b:a,orders[0]):null;
-  const latestTime=latestOrder?(latestOrder.updatedAt||latestOrder.createdAt):null;
-  const latestStr=latestTime?new Date(latestTime).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
-  document.getElementById('report-stats').innerHTML=[
-    {n:tP,l:'資料庫品項',c:'var(--ac)'},{n:tO,l:'待排程訂單',c:'var(--gr)'},
-    {n:urg,l:'緊急訂單',c:'var(--rd)'},{n:tH,l:'待出貨訂單',c:'var(--or)'},
-    {n:`${mU}/${machList.length}`,l:'使用機台',c:'var(--pu)'},
-    {n:latestStr,l:'最近更新訂單',c:'var(--pu)',small:true}
-  ].map(s=>`<div class="stat-card"><div class="${s.small?'':'stat-num'}" style="color:${s.c};font-size:${s.small?'14px':'26px'};font-weight:700;margin-bottom:3px;">${s.n}</div><div class="stat-lbl">${s.l}</div></div>`).join('');
-  const mg={};sortedData.forEach(r=>{const m=r.Material||'未知';mg[m]=(mg[m]||0)+1;});
-  let sum='<div style="margin-bottom:8px;font-weight:600;">材料分布</div><div style="display:flex;flex-wrap:wrap;gap:5px;">';
-  Object.entries(mg).sort((a,b)=>b[1]-a[1]).forEach(([m,c])=>{sum+=`<span class="badge b-blue">${m}: ${c}</span>`;});
-  sum+='</div>';document.getElementById('report-summary').innerHTML=sum;
-}
-
-// ── BACKUP ─────────────────────────────────────
-async function exportBackup(){
-  const b={dbData,orders,completedOrders,heldOrders,scheduleResult,scheduleConfig,exportedAt:new Date().toISOString()};
-  const blob=new Blob([JSON.stringify(b,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`昌葳備份_${today()}.json`;a.click();
-  toast('已匯出備份','success');
-}
-function importBackup(ev){
-  const f=ev.target.files[0];if(!f)return;const r=new FileReader();
-  r.onload=async e=>{
-    try{
-      const b=JSON.parse(e.target.result);
-      if(b.dbData){dbData=b.dbData;sortedData=b.dbData;}
-      if(b.orders)orders=b.orders;
-      if(b.completedOrders)completedOrders=b.completedOrders;
-      if(b.heldOrders)heldOrders=b.heldOrders;
-      if(b.scheduleResult)scheduleResult=b.scheduleResult;
-      if(b.scheduleConfig)scheduleConfig={...scheduleConfig,...b.scheduleConfig};
-      await saveToStorage();renderOrders();buildPartNoList();searchOrders();renderHistory();renderHeldOrders();
-      toast('備份已還原','success');
-    }catch(e){toast('還原失敗：'+e.message,'error');}
-  };r.readAsText(f);ev.target.value='';
-}
-async function clearTodayData(){
-  if(!confirm('清除今日排程和訂單？（資料庫保留）'))return;
-  orders=[];scheduleResult=null;await localforage.removeItem('orders');await localforage.removeItem('scheduleResult');
-  renderOrders();document.getElementById('gantt-container').innerHTML='<div style="text-align:center;padding:50px;color:var(--tx2);">排程已清除</div>';
-  toast('已清除','info');
-}
-
-// ── GS SYNC ────────────────────────────────────
-function gsGet(params){
-  return new Promise((resolve,reject)=>{
-    const cb='_gsCb_'+Date.now()+'_'+Math.floor(Math.random()*9999);let script;
-    const timer=setTimeout(()=>{cleanup();reject(new Error('超時15秒'));},15000);
-    function cleanup(){clearTimeout(timer);delete window[cb];if(script&&script.parentNode)script.parentNode.removeChild(script);}
-    window[cb]=data=>{cleanup();resolve(data);};
-    const url=GS_URL+'?'+new URLSearchParams({...params,callback:cb}).toString();
-    script=document.createElement('script');script.src=url;
-    script.onerror=()=>{cleanup();reject(new Error('Script載入失敗'));};
-    document.head.appendChild(script);
-  });
-}
-async function gsPost(body){
-  await fetch(GS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
-  return{status:'ok',written:body.data?body.data.length:0};
-}
-async function testGsConnection(){
-  setGsDot('syncing');const diag=document.getElementById('gs-diag-box');if(diag)diag.style.display='none';
-  addSyncLog('測試連線中…','info');
-  try{
-    const r=await gsGet({action:'test'});
-    if(r&&r.status==='ok'){
-      gsConnected=true;setGsDot('connected');
-      document.getElementById('gs-status-text').textContent='✅ 連線成功';
-      document.getElementById('gs-status-sub').textContent=`${r.title} | ${(r.sheets||[]).join(', ')}`;
-      addSyncLog('✅ 連線成功 '+r.title,'ok');toast('Google Sheets 連線成功','success');
-    }else throw new Error(r&&r.error?r.error:'回應異常');
-  }catch(e){
-    gsConnected=false;setGsDot('disconnected');
-    document.getElementById('gs-status-text').textContent='❌ 連線失敗';
-    document.getElementById('gs-status-sub').textContent=e.message;
-    addSyncLog('❌ '+e.message,'err');if(diag)diag.style.display='flex';
-    toast('連線失敗：'+e.message,'error',6000);
-  }
-}
-function setGsDot(state){
-  ['sidebar-sync-dot','nav-sync-dot','gs-status-dot'].forEach(id=>{const el=document.getElementById(id);if(el)el.className='sync-dot '+state;});
-  const lbl=document.getElementById('sidebar-sync-label');if(lbl)lbl.textContent=state==='connected'?'已連線 GSheets':state==='syncing'?'同步中…':'未連線 GSheets';
-}
-async function gsSyncDB(dir){
-  addSyncLog(`資料庫 ${dir==='push'?'↑':'↓'}…`,'info');setGsDot('syncing');
-  try{
-    if(dir==='push'){if(!sortedData.length)throw new Error('資料庫為空');const res=await gsPost({action:'write',sheet:'Database',data:sortedData});addSyncLog(`推送 ${res.written} 筆`,'ok');document.getElementById('gs-db-last').textContent=`推送 ${nowStr()} ${res.written}筆`;toast(`推送 ${res.written} 筆`,'success');}
-    else{const res=await gsGet({action:'read',sheet:'Database'});if(res.error)throw new Error(res.error);dbData=(res.data||[]).map(normalizeRow);sortedData=[...dbData];buildPartNoList();await saveToStorage();renderDBTable(dbData);document.getElementById('db-count').textContent=`共 ${dbData.length} 筆`;document.getElementById('db-actions').style.display='block';addSyncLog(`拉取 ${dbData.length} 筆`,'ok');toast(`載入 ${dbData.length} 筆`,'success');}
-  }catch(e){addSyncLog('失敗：'+e.message,'err');toast('失敗：'+e.message,'error');}
-  setGsDot(gsConnected?'connected':'disconnected');
-}
-async function gsSyncOrders(dir){
-  addSyncLog(`訂單 ${dir==='push'?'↑':'↓'}…`,'info');setGsDot('syncing');
-  try{
-    if(dir==='push'){
-      await gsPost({action:'writejson',sheet:'OrdersJSON',data:orders});
-      await gsPost({action:'writejson',sheet:'CompletedJSON',data:completedOrders});
-      await gsPost({action:'writejson',sheet:'HeldJSON',data:heldOrders});
-      addSyncLog(`推送 訂單${orders.length} / 歷史${completedOrders.length} / 待出貨${heldOrders.length}`,'ok');
-      toast('訂單推送完成','success');
-      if(document.getElementById('gs-ord-last'))document.getElementById('gs-ord-last').textContent=`推送 ${nowStr()}`;
-    }else{
-      const [ordRes,compRes,heldRes]=await Promise.all([
-        gsGet({action:'readjson',sheet:'OrdersJSON'}),
-        gsGet({action:'readjson',sheet:'CompletedJSON'}),
-        gsGet({action:'readjson',sheet:'HeldJSON'})
-      ]);
-      if(ordRes.data&&Array.isArray(ordRes.data)){orders=ordRes.data;await localforage.setItem('orders',orders);}
-      if(compRes.data&&Array.isArray(compRes.data)){completedOrders=compRes.data;await localforage.setItem('completedOrders',completedOrders);}
-      if(heldRes.data&&Array.isArray(heldRes.data)){heldOrders=heldRes.data;await localforage.setItem('heldOrders',heldOrders);}
-      renderOrders();searchOrders();renderHistory();renderHeldOrders();renderReport();
-      addSyncLog(`拉取 訂單${orders.length} / 歷史${completedOrders.length} / 待出貨${heldOrders.length}`,'ok');
-      toast('訂單拉取完成','success');
-    }
-  }catch(e){addSyncLog('失敗：'+e.message,'err');toast('失敗：'+e.message,'error');}
-  setGsDot(gsConnected?'connected':'disconnected');
-}
-async function gsSyncSchedule(dir){
-  addSyncLog(`排程 ${dir==='push'?'↑':'↓'}…`,'info');setGsDot('syncing');
-  try{
-    if(dir==='push'){if(!scheduleResult)throw new Error('尚無排程');const rows=[];const ml=scheduleResult.activeMachines||MACHINES;ml.forEach(m=>{if(scheduleResult.machineSchedule[m])scheduleResult.machineSchedule[m].jobs.forEach(j=>{rows.push({機台:m,訂單號:j.OrderNo||'',品號:j.PartNo,材料:j.Material,數量:j.Qty,開始:j.startDate,結束:j.endDate,換模min:j.moldChangeMin,日產能:j.dailyPcs,緊急:j.urgent?'是':'否'});});});if(!rows.length)throw new Error('排程為空');const res=await gsPost({action:'write',sheet:'Schedule',data:rows});addSyncLog(`推送 ${res.written} 筆`,'ok');toast('排程推送完成','success');}
-    else{const res=await gsGet({action:'read',sheet:'Schedule'});if(res.error)throw new Error(res.error);addSyncLog(`拉取 ${(res.data||[]).length} 筆`,'ok');toast('排程拉取完成','info');}
-  }catch(e){addSyncLog('失敗：'+e.message,'err');toast('失敗：'+e.message,'error');}
-  setGsDot(gsConnected?'connected':'disconnected');
-}
-async function syncAll(){
-  if(!gsConnected){const ok=confirm('尚未測試連線，先測試？');if(ok){await testGsConnection();if(!gsConnected)return;}else return;}
-  toast('開始全部同步…','info');
-  if(sortedData.length)await gsSyncDB('push');
-  if(orders.length)await gsSyncOrders('push');
-  if(scheduleResult)await gsSyncSchedule('push');
-  toast('✅ 全部同步完成','success');addSyncLog('=== 全部同步完成 ===','ok');
-}
-// ── AUTO SYNC ───────────────────────────────────
-async function autoSyncInit(){
-  updateBackupBar('連線 GSheets 中…');
-  try{
-    const r=await gsGet({action:'test'});
-    if(!r||r.status!=='ok')throw new Error('連線失敗');
-    gsConnected=true;setGsDot('connected');
-    updateBackupBar('GSheets 已連線，拉取資料…');
-    addSyncLog('🔄 啟動自動同步…','info');
-    await autoSyncPull();
-    startAutoSyncInterval(5);
-    addSyncLog('✅ 自動同步已啟動（每5分鐘）','ok');
-  }catch(e){
-    gsConnected=false;setGsDot('disconnected');
-    updateBackupBar('離線模式（本機資料）');
-    addSyncLog('⚠️ GSheets 無法連線，使用本機：'+e.message,'err');
-    // 1分鐘後重試
-    setTimeout(autoSyncInit,60000);
-  }
-}
-async function autoSyncPull(){
-  try{
-    // 拉取資料庫
-    const dbRes=await gsGet({action:'read',sheet:'Database'});
-    if(dbRes.data&&dbRes.data.length>0){
-      dbData=dbRes.data.map(normalizeRow);sortedData=[...dbData];
-      await localforage.setItem('dbData',dbData);
-      buildPartNoList();
-      addSyncLog(`↓ 資料庫 ${dbData.length} 筆`,'ok');
-    }
-    // 拉取訂單（JSON blob）
-    const ordRes=await gsGet({action:'readjson',sheet:'OrdersJSON'});
-    if(ordRes.data&&Array.isArray(ordRes.data)){
-      orders=ordRes.data;
-      await localforage.setItem('orders',orders);
-      addSyncLog(`↓ 訂單 ${orders.length} 筆`,'ok');
-    }
-    // 拉取歷史記錄（JSON blob）
-    const compRes=await gsGet({action:'readjson',sheet:'CompletedJSON'});
-    if(compRes.data&&Array.isArray(compRes.data)){
-      completedOrders=compRes.data;
-      await localforage.setItem('completedOrders',completedOrders);
-      addSyncLog(`↓ 歷史記錄 ${completedOrders.length} 筆`,'ok');
-    }
-    // 拉取待出貨（JSON blob）
-    const heldRes=await gsGet({action:'readjson',sheet:'HeldJSON'});
-    if(heldRes.data&&Array.isArray(heldRes.data)){
-      heldOrders=heldRes.data;
-      await localforage.setItem('heldOrders',heldOrders);
-      addSyncLog(`↓ 待出貨 ${heldOrders.length} 筆`,'ok');
-    }
-    // 一律重新渲染所有頁面
-    if(dbData.length){
-      renderDBTable(sortedData);
-      document.getElementById('db-count').textContent=`共 ${dbData.length} 筆`;
-      document.getElementById('db-actions').style.display='block';
-    }
-    renderOrders();searchOrders();renderHistory();renderHeldOrders();renderReport();
-    updateBackupBar(`GSheets 拉取 ${nowStr()}`);
-  }catch(e){addSyncLog('拉取失敗：'+e.message,'err');}
-}
-function scheduleAutoSyncPush(){
-  if(!gsConnected)return;
-  clearTimeout(autoSyncDebounceTimer);
-  autoSyncDebounceTimer=setTimeout(autoSyncPushSilent,3000);
-}
-async function autoSyncPushSilent(){
-  if(!gsConnected)return;
-  setGsDot('syncing');
-  try{
-    const ps=[];
-    if(sortedData.length)ps.push(gsPost({action:'write',sheet:'Database',data:sortedData}));
-    ps.push(gsPost({action:'writejson',sheet:'OrdersJSON',data:orders}));
-    ps.push(gsPost({action:'writejson',sheet:'CompletedJSON',data:completedOrders}));
-    ps.push(gsPost({action:'writejson',sheet:'HeldJSON',data:heldOrders}));
-    await Promise.all(ps);
-    setGsDot('connected');
-    updateBackupBar(`自動同步 ${nowStr()}`);
-    addSyncLog('↑ 自動推送完成','ok');
-  }catch(e){
-    setGsDot('disconnected');gsConnected=false;
-    addSyncLog('自動推送失敗：'+e.message,'err');
-    setTimeout(autoSyncInit,60000);
-  }
-}
-function startAutoSyncInterval(min){
-  if(autoSyncIntervalTimer)clearInterval(autoSyncIntervalTimer);
-  autoSyncIntervalTimer=setInterval(autoSyncPushSilent,min*60000);
-}
-function addSyncLog(msg,type='info'){syncLog.unshift({msg,type,time:nowStr()});if(syncLog.length>80)syncLog.pop();renderSyncLog();}
-function renderSyncLog(){const el=document.getElementById('sync-log');if(!el)return;if(!syncLog.length){el.innerHTML='<div style="color:var(--tx2);font-size:12px;text-align:center;padding:14px;">尚無同步紀錄</div>';return;}el.innerHTML=syncLog.map(l=>`<div class="sync-log-item ${l.type}"><span style="color:var(--tx2);margin-right:7px;">${l.time}</span>${l.msg}</div>`).join('');}
-function clearSyncLog(){syncLog=[];renderSyncLog();}
-
-const APPS_SCRIPT_CODE=`function doGet(e) {
-  var action = e.parameter.action;
-  var callback = e.parameter.callback;
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var result;
-  try {
-    if (action === 'test') {
-      result = { status:'ok', title:ss.getName(), sheets:ss.getSheets().map(function(s){return s.getName();}), time:new Date().toLocaleString('zh-TW') };
-    } else if (action === 'read') {
-      var ws = ss.getSheetByName(e.parameter.sheet);
-      if (!ws) { result = {status:'ok', data:[]}; }
-      else {
-        var vals = ws.getDataRange().getValues();
-        if (vals.length <= 1) { result = {status:'ok',data:[]}; }
-        else {
-          var headers = vals[0].map(function(h){return String(h);});
-          result = {status:'ok', data:vals.slice(1).map(function(row){var obj={};headers.forEach(function(h,i){obj[h]=row[i];});return obj;}), count:vals.length-1};
-        }
+  // Scroll-triggered fade-up
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        io.unobserve(entry.target);
       }
-    } else if (action === 'readjson') {
-      var ws = ss.getSheetByName(e.parameter.sheet);
-      if (!ws || ws.getLastRow() === 0) { result = {status:'ok', data:[]}; }
-      else {
-        var raw = ws.getRange(1,1).getValue();
-        try { result = {status:'ok', data: raw ? JSON.parse(raw) : []}; }
-        catch(pe) { result = {status:'ok', data:[]}; }
-      }
-    } else { result = {error:'Unknown:'+action}; }
-  } catch(err) { result = {error:err.message}; }
-  var output = JSON.stringify(result);
-  if (callback) return ContentService.createTextOutput(callback+'('+output+')').setMimeType(ContentService.MimeType.JAVASCRIPT);
-  return ContentService.createTextOutput(output).setMimeType(ContentService.MimeType.JSON);
-}
-function doPost(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  try {
-    var p = JSON.parse(e.postData.contents);
-    if (p.action === 'write') {
-      var ws = ss.getSheetByName(p.sheet) || ss.insertSheet(p.sheet);
-      ws.clearContents();
-      if (!p.data || !p.data.length) return jsonR({status:'ok',written:0});
-      var h = Object.keys(p.data[0]);
-      var rows = [h].concat(p.data.map(function(r){return h.map(function(k){return r[k]!==undefined?r[k]:'';});}));
-      ws.getRange(1,1,rows.length,h.length).setValues(rows);
-      ws.getRange(1,1,1,h.length).setBackground('#1a1a2e').setFontColor('#58a6ff').setFontWeight('bold');
-      h.forEach(function(_,i){ws.autoResizeColumn(i+1);});
-      return jsonR({status:'ok',written:p.data.length});
-    } else if (p.action === 'writejson') {
-      var ws = ss.getSheetByName(p.sheet) || ss.insertSheet(p.sheet);
-      ws.clearContents();
-      ws.getRange(1,1).setValue(JSON.stringify(p.data));
-      return jsonR({status:'ok',written: Array.isArray(p.data)?p.data.length:1});
-    }
-    return jsonR({error:'Unknown'});
-  } catch(err) { return jsonR({error:err.message}); }
-}
-function jsonR(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
-}`;
+    });
+  }, { threshold: 0.06, rootMargin: '0px 0px -40px 0px' });
 
-function showAppsScriptCode(){document.getElementById('apps-script-code-display').textContent=APPS_SCRIPT_CODE;document.getElementById('modal-appsscript').classList.add('open');}
-function copyAppsScriptCode(){navigator.clipboard.writeText(APPS_SCRIPT_CODE).then(()=>toast('已複製','success')).catch(()=>toast('請手動複製','warning'));}
-
-// ── HELD ORDERS ────────────────────────────────
-function markOrderHeld(id){
-  const idx=orders.findIndex(o=>String(o.id)===String(id));
-  if(idx===-1)return;
-  const o={...orders[idx],heldAt:new Date().toISOString()};
-  heldOrders.unshift(o);
-  orders.splice(idx,1);
-  renderOrders();renderHeldOrders();searchOrders();renderReport();saveToStorage();
-  toast('已移入待出貨','success');
-}
-function shipHeldOrder(id){
-  const idx=heldOrders.findIndex(o=>String(o.id)===String(id));
-  if(idx===-1)return;
-  const o={...heldOrders[idx],completedAt:new Date().toISOString()};
-  completedOrders.unshift(o);
-  heldOrders.splice(idx,1);
-  renderHeldOrders();renderHistory();renderReport();saveToStorage();
-  toast('已出貨，移入歷史記錄','success');
-}
-function returnHeldToOrders(id){
-  const idx=heldOrders.findIndex(o=>String(o.id)===String(id));
-  if(idx===-1)return;
-  const o={...heldOrders[idx]};delete o.heldAt;
-  orders.push(o);heldOrders.splice(idx,1);
-  renderOrders();renderHeldOrders();searchOrders();renderReport();saveToStorage();
-  toast('已還原至待排程','info');
-}
-function renderHeldOrders(){
-  const cnt=document.getElementById('held-count');if(cnt)cnt.textContent=heldOrders.length;
-  const list=document.getElementById('held-list');if(!list)return;
-  if(!heldOrders.length){list.innerHTML='<div style="color:var(--tx2);text-align:center;padding:24px;">目前無待出貨訂單</div>';renderHeldSummary();return;}
-  list.innerHTML=heldOrders.map(o=>`
-    <div class="order-card ${o.Urgent?'urgent':''}">
-      <div class="order-card-header">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          ${o.Urgent?'<span class="badge b-red">🚨 緊急</span>':''}
-          <span class="badge b-orange">📦 待出貨</span>
-          <strong style="color:var(--ac);">${o.OrderNo||'—'}</strong>
-          ${o.Company?`<span class="badge b-purple">${o.Company}</span>`:''}
-          ${o.Due?`<span class="badge b-yellow">交貨 ${o.Due}</span>`:''}
-        </div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap;">
-          <button class="btn btn-success btn-sm" onclick="shipHeldOrder('${o.id}')">🚚 已出貨</button>
-          <button class="btn btn-ghost btn-sm" onclick="openEditOrder('${o.id}','held')">✏️</button>
-          <button class="btn btn-warning btn-sm" onclick="returnHeldToOrders('${o.id}')">↩️ 退回</button>
-        </div>
-      </div>
-      <div style="font-size:12px;color:var(--tx2);margin-bottom:5px;">
-        ${o.Contact?`👤${o.Contact} `:''}${o.Phone?`📞${o.Phone} `:''}${o.Location?`📍${o.Location}`:''}
-        ${o.heldAt?`<span style="float:right;font-size:11px;">移入：${new Date(o.heldAt).toLocaleString('zh-TW')}</span>`:''}
-      </div>
-      ${o.Note?`<div style="font-size:12px;color:var(--yw);margin-bottom:4px;">📝 ${o.Note}</div>`:''}
-      <div style="font-size:12px;">${o.items.map(it=>`<span style="margin-right:8px;"><span style="color:var(--ac);">${it.PartNo}</span>×${it.Qty} <span class="badge b-blue">${it.Tonnage}T</span></span>`).join('')}</div>
-    </div>`).join('');
-  renderHeldSummary();
-}
-function renderHeldSummary(){
-  const el=document.getElementById('held-summary');if(!el)return;
-  if(!heldOrders.length){el.innerHTML='<div style="color:var(--tx2);font-size:13px;">無待出貨品項</div>';return;}
-  const byCompany={};
-  heldOrders.forEach(o=>{const co=o.Company||'未指定';if(!byCompany[co])byCompany[co]=[];byCompany[co].push(o);});
-  let html='<div style="display:flex;flex-wrap:wrap;gap:7px;">';
-  Object.entries(byCompany).forEach(([co,os])=>{
-    const total=os.reduce((s,o)=>s+o.items.reduce((ss,i)=>ss+i.Qty,0),0);
-    html+=`<div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:7px;padding:9px 12px;"><div style="font-weight:600;color:var(--ac);">${co}</div><div style="font-size:12px;color:var(--tx2);">${os.length} 訂單 / ${total} 件</div></div>`;
+  document.querySelectorAll('.fade-up').forEach((el, i) => {
+    // Stagger within same parent section
+    const siblings = Array.from(el.parentElement.querySelectorAll(':scope > .fade-up'));
+    const idx = siblings.indexOf(el);
+    el.style.transitionDelay = `${idx * 100}ms`;
+    io.observe(el);
   });
-  html+='</div>';el.innerHTML=html;
-}
-
-// ── SCHEDULE CONFIG ─────────────────────────────
-function renderScheduleConfig(){
-  document.getElementById('cfg-work-start').value=scheduleConfig.workStart||'08:00';
-  document.getElementById('cfg-work-end').value=scheduleConfig.workEnd||'20:00';
-  document.getElementById('cfg-break-min').value=scheduleConfig.breakMin||60;
-  document.getElementById('cfg-weekend').checked=!!scheduleConfig.weekendOvertime;
-  const mc=document.getElementById('cfg-machines');
-  mc.innerHTML=MACHINES.map(m=>{
-    const on=(scheduleConfig.activeMachines||MACHINES).includes(m);
-    return `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;padding:5px 10px;background:var(--bg2);border:1px solid ${on?'var(--ac)':'var(--bdr)'};border-radius:6px;font-size:13px;">
-      <input type="checkbox" id="cfg-m-${m}" ${on?'checked':''} style="width:14px;height:14px;" onchange="updateCfgMachineBorder(this,${m})">
-      ${m}T</label>`;
-  }).join('');
-  updateConfigCapPreview();
-}
-function updateCfgMachineBorder(cb,m){
-  cb.parentElement.style.borderColor=cb.checked?'var(--ac)':'var(--bdr)';
-  updateConfigCapPreview();
-}
-function updateConfigCapPreview(){
-  try{
-    const s=document.getElementById('cfg-work-start').value||'08:00';
-    const e=document.getElementById('cfg-work-end').value||'20:00';
-    const b=Number(document.getElementById('cfg-break-min').value)||0;
-    const [sh,sm]=s.split(':').map(Number);const [eh,em]=e.split(':').map(Number);
-    const mins=(eh*60+em)-(sh*60+sm)-b;
-    const cap=Math.max(0,Math.floor(mins*60/(CYCLE_TIME_BASE+COOLING_TIME)));
-    const el=document.getElementById('cfg-daily-cap');
-    if(el)el.textContent=`預估每日產能：${cap} 件/機台（工時 ${mins} 分鐘）`;
-  }catch(e){}
-}
-function saveScheduleConfig(){
-  const s=document.getElementById('cfg-work-start').value||'08:00';
-  const e=document.getElementById('cfg-work-end').value||'20:00';
-  const b=Number(document.getElementById('cfg-break-min').value)||0;
-  const wknd=document.getElementById('cfg-weekend').checked;
-  const active=MACHINES.filter(m=>document.getElementById('cfg-m-'+m)&&document.getElementById('cfg-m-'+m).checked);
-  if(!active.length){toast('請至少選擇一台機台','warning');return;}
-  scheduleConfig={workStart:s,workEnd:e,breakMin:b,weekendOvertime:wknd,activeMachines:active};
-  saveToStorage();renderScheduleConfig();
-  toast('排程設定已儲存','success');
-}
-
-// ── UTILS ──────────────────────────────────────
-function today(){return new Date().toISOString().slice(0,10).replace(/-/g,'');}
-function dateStr(d){return d.toISOString().slice(0,10);}
-function nowStr(){return new Date().toLocaleTimeString('zh-TW',{hour12:false});}
 </script>
+
 </body>
 </html>

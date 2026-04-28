@@ -399,7 +399,13 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <button class="btn btn-success btn-sm" onclick="openMoldEdit(-1)">➕ 新增模具</button>
           <button class="btn btn-ghost btn-sm" onclick="exportMoldExcel()">⬇️ 匯出 Excel</button>
+          <button class="gs-btn" onclick="gsSyncMold('push')">☁️↑ 推送至 GSheets</button>
+          <button class="gs-btn" onclick="gsSyncMold('pull')">☁️↓ 從 GSheets 拉取</button>
+          <span id="gs-mold-last" style="font-size:11px;color:var(--tx2);"></span>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <input class="db-search" id="mold-search" placeholder="🔍 搜尋品號、位置、材質…" oninput="renderMoldDB()" style="max-width:280px;">
+          <span style="font-size:11px;color:var(--tx2);">💡 文字資料同步 GSheets；照片儲存於本機</span>
         </div>
       </div>
       <div id="mold-db-container"></div>
@@ -688,6 +694,7 @@ async function saveToStorage(){
 }
 async function saveMoldToStorage(){
   await localforage.setItem('moldData',moldData);
+  scheduleAutoSyncPush();
 }
 
 // ── AUTO BACKUP ────────────────────────────────
@@ -930,89 +937,166 @@ async function processMoldFile(file){
     const ab=await file.arrayBuffer();
     const zip=await JSZip.loadAsync(ab);
 
-    // Shared strings table (xlsx stores most cell text here by index)
+    // ── Helper: get file by path (case-insensitive fallback) ──
+    const zipGet=async(path,type='text')=>{
+      let f=zip.file(path);
+      if(!f){
+        const lo=path.toLowerCase();
+        const key=Object.keys(zip.files).find(k=>k.toLowerCase()===lo);
+        if(key)f=zip.file(key);
+      }
+      return f?await f.async(type):null;
+    };
+
+    // ── Helper: get all elements by local name (NS-aware with prefix fallbacks) ──
+    const getEls=(parent,ns,local)=>{
+      const byNs=[...parent.getElementsByTagNameNS(ns,local)];
+      if(byNs.length)return byNs;
+      return[...parent.getElementsByTagName(local),
+             ...parent.getElementsByTagName('xdr:'+local),
+             ...parent.getElementsByTagName('a:'+local),
+             ...parent.getElementsByTagName('p:'+local)];
+    };
+    const getAttr=(el,ns,local)=>{
+      return el.getAttributeNS(ns,local)||el.getAttribute(local)||
+             el.getAttribute('r:'+local)||el.getAttribute('a:'+local)||'';
+    };
+
+    // ── Resolve relative path (e.g. xl/drawings + ../media/a.jpg → xl/media/a.jpg) ──
+    const resolvePath=(base,rel)=>{
+      if(rel.startsWith('/')){return rel.replace(/^\//,'');}
+      const parts=base.split('/');parts.pop();// remove file name, keep dir
+      rel.split('/').forEach(seg=>{if(seg==='..')parts.pop();else if(seg!=='.')parts.push(seg);});
+      return parts.join('/');
+    };
+
+    // ── Shared strings ──
     const SP_NS='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
-    const ssFile=zip.file('xl/sharedStrings.xml');
     const ssMap=[];
-    if(ssFile){
-      const ssXml=await ssFile.async('text');
+    const ssXml=await zipGet('xl/sharedStrings.xml');
+    if(ssXml){
       const ssd=new DOMParser().parseFromString(ssXml,'text/xml');
-      [...ssd.getElementsByTagNameNS(SP_NS,'si')].forEach(si=>{
-        ssMap.push([...si.getElementsByTagNameNS(SP_NS,'t')].map(t=>t.textContent).join(''));
-      });
+      const sis=getEls(ssd,SP_NS,'si');
+      sis.forEach(si=>{ssMap.push(getEls(si,SP_NS,'t').map(t=>t.textContent).join(''));});
     }
 
-    // Drawing rels: rId → media path
+    // ── Find drawing file by following sheet1 rels ──
+    const REL_NS='http://schemas.openxmlformats.org/package/2006/relationships';
     const XDR_NS='http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing';
     const A_NS='http://schemas.openxmlformats.org/drawingml/2006/main';
     const R_NS='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
-    const REL_NS='http://schemas.openxmlformats.org/package/2006/relationships';
-    const ridMap={};
-    const drawRelsFile=zip.file('xl/drawings/_rels/drawing1.xml.rels');
-    if(drawRelsFile){
-      const drawRelsXml=await drawRelsFile.async('text');
-      const dr=new DOMParser().parseFromString(drawRelsXml,'text/xml');
-      const relEls=[...dr.getElementsByTagNameNS(REL_NS,'Relationship')];
-      // fallback: no-namespace parse (some tools omit xmlns on rels)
-      const rels=relEls.length?relEls:[...dr.getElementsByTagName('Relationship')];
-      rels.forEach(r=>{ridMap[r.getAttribute('Id')]=r.getAttribute('Target').replace('../','xl/');});
-    }
 
-    // Drawing XML: map (row,col) → media path using namespace-aware queries
-    const rowImgMap={};
-    const drawFile=zip.file('xl/drawings/drawing1.xml');
-    if(drawFile){
-      const drawXml=await drawFile.async('text');
-      const dd=new DOMParser().parseFromString(drawXml,'text/xml');
-      const anchors=[
-        ...dd.getElementsByTagNameNS(XDR_NS,'twoCellAnchor'),
-        ...dd.getElementsByTagNameNS(XDR_NS,'oneCellAnchor')
-      ];
-      anchors.forEach(a=>{
-        const fromEl=a.getElementsByTagNameNS(XDR_NS,'from')[0];if(!fromEl)return;
-        const rowEl=fromEl.getElementsByTagNameNS(XDR_NS,'row')[0];
-        const colEl=fromEl.getElementsByTagNameNS(XDR_NS,'col')[0];
-        if(!rowEl||!colEl)return;
-        const row=parseInt(rowEl.textContent);
-        const col=parseInt(colEl.textContent);
-        const blip=a.getElementsByTagNameNS(A_NS,'blip')[0];if(!blip)return;
-        const rId=blip.getAttributeNS(R_NS,'embed');
-        if(rId&&ridMap[rId]){
-          if(!rowImgMap[row])rowImgMap[row]=[];
-          rowImgMap[row].push({col,path:ridMap[rId]});
+    let drawingPath='xl/drawings/drawing1.xml'; // default
+    const shRelsXml=await zipGet('xl/worksheets/_rels/sheet1.xml.rels');
+    if(shRelsXml){
+      const sr=new DOMParser().parseFromString(shRelsXml,'text/xml');
+      const rels=getEls(sr,REL_NS,'Relationship');
+      for(const r of rels){
+        if((r.getAttribute('Type')||'').toLowerCase().includes('drawing')){
+          const target=r.getAttribute('Target')||'';
+          drawingPath=resolvePath('xl/worksheets/sheet1.xml',target);
+          break;
         }
+      }
+    }
+    console.log('[MoldImport] Drawing path:',drawingPath);
+
+    // ── Parse drawing rels: rId → absolute media path ──
+    const ridMap={};
+    const drawRelsPath=drawingPath.replace(/(.*\/)([^/]+)$/,'$1_rels/$2.rels');
+    const drawRelsXml=await zipGet(drawRelsPath);
+    if(drawRelsXml){
+      const dr=new DOMParser().parseFromString(drawRelsXml,'text/xml');
+      const rels=getEls(dr,REL_NS,'Relationship');
+      (rels.length?rels:[...dr.getElementsByTagName('Relationship')]).forEach(r=>{
+        const id=r.getAttribute('Id')||'';
+        const target=r.getAttribute('Target')||'';
+        if(id&&target)ridMap[id]=resolvePath(drawingPath,target);
       });
-      // Sort each row's images by column so first=MoldImg, second=ProdImg
+    }
+    console.log('[MoldImport] ridMap entries:',Object.keys(ridMap).length,ridMap);
+
+    // ── Parse drawing XML: row → [{col, path}] ──
+    const rowImgMap={};
+    const drawXml=await zipGet(drawingPath);
+    if(drawXml){
+      const dd=new DOMParser().parseFromString(drawXml,'text/xml');
+      let anchors=getEls(dd,XDR_NS,'twoCellAnchor');
+      anchors=[...anchors,...getEls(dd,XDR_NS,'oneCellAnchor')];
+      console.log('[MoldImport] Anchors found:',anchors.length);
+
+      // Fallback: regex parse the raw XML string if DOM gave 0 anchors
+      if(!anchors.length){
+        console.warn('[MoldImport] DOM gave 0 anchors — trying regex fallback');
+        const re=/<[a-z]*:?(?:twoCellAnchor|oneCellAnchor)[^>]*>([\s\S]*?)<\/[a-z]*:?(?:twoCellAnchor|oneCellAnchor)>/g;
+        let m;
+        while((m=re.exec(drawXml))!==null){
+          const block=m[1];
+          const rowM=/<[a-z]*:?row>(\d+)<\/[a-z]*:?row>/.exec(block);
+          const colM=/<[a-z]*:?col>(\d+)<\/[a-z]*:?col>/.exec(block);
+          const ridM=/r:embed="([^"]+)"/.exec(block)||/embed="([^"]+)"/.exec(block);
+          if(rowM&&colM&&ridM){
+            const row=parseInt(rowM[1]),col=parseInt(colM[1]),rId=ridM[1];
+            if(ridMap[rId]){
+              if(!rowImgMap[row])rowImgMap[row]=[];
+              rowImgMap[row].push({col,path:ridMap[rId]});
+            }
+          }
+        }
+      }else{
+        anchors.forEach(a=>{
+          const fromEl=getEls(a,XDR_NS,'from')[0];if(!fromEl)return;
+          const rowEl=getEls(fromEl,XDR_NS,'row')[0];
+          const colEl=getEls(fromEl,XDR_NS,'col')[0];
+          if(!rowEl||!colEl)return;
+          const row=parseInt(rowEl.textContent);
+          const col=parseInt(colEl.textContent);
+          const blip=getEls(a,A_NS,'blip')[0];if(!blip)return;
+          const rId=getAttr(blip,R_NS,'embed');
+          if(rId&&ridMap[rId]){
+            if(!rowImgMap[row])rowImgMap[row]=[];
+            rowImgMap[row].push({col,path:ridMap[rId]});
+          }
+        });
+      }
       Object.keys(rowImgMap).forEach(r=>{rowImgMap[r].sort((a,b)=>a.col-b.col);});
+      console.log('[MoldImport] rowImgMap rows with images:',Object.keys(rowImgMap).length);
     }
 
-    // Load all needed images as base64 (detect mime from extension)
+    // ── Load images as base64 ──
     const neededPaths=new Set(Object.values(rowImgMap).flatMap(imgs=>imgs.map(x=>x.path)));
+    console.log('[MoldImport] Images to load:',neededPaths.size,[...neededPaths].slice(0,5));
     const imgCache={};
     await Promise.all([...neededPaths].map(async p=>{
-      const f2=zip.file(p);
-      if(f2){
-        const b64=await f2.async('base64');
-        const ext=(p.split('.').pop()||'jpeg').toLowerCase();
-        const mime=ext==='png'?'image/png':ext==='gif'?'image/gif':'image/jpeg';
-        imgCache[p]=`data:${mime};base64,`+b64;
+      const data=await zipGet(p,'base64');
+      if(data){
+        const ext=(p.split('.').pop()||'jpeg').toLowerCase().split('?')[0];
+        const mime=ext==='png'?'image/png':ext==='gif'?'image/gif':ext==='webp'?'image/webp':'image/jpeg';
+        imgCache[p]=`data:${mime};base64,`+data;
       }
     }));
+    console.log('[MoldImport] Loaded images:',Object.keys(imgCache).length);
 
-    // Sheet data (namespace-aware; handles shared strings)
-    const sheetXml=await zip.file('xl/worksheets/sheet1.xml').async('text');
+    // ── Parse sheet data ──
+    const sheetXml=await zipGet('xl/worksheets/sheet1.xml');
+    if(!sheetXml)throw new Error('找不到工作表資料（sheet1.xml）');
     const sd=new DOMParser().parseFromString(sheetXml,'text/xml');
-    const rows=[...sd.getElementsByTagNameNS(SP_NS,'row')].slice(1); // skip header row
+    let rowEls=getEls(sd,SP_NS,'row');
+    if(!rowEls.length)rowEls=[...sd.getElementsByTagName('row')];
+    const rows=rowEls.slice(1); // skip header
+
     const newMold=[];
     rows.forEach(row=>{
-      const rn=parseInt(row.getAttribute('r')||0)-1; // drawing row is 0-indexed
+      const rn=parseInt(row.getAttribute('r')||0)-1; // sheet row r (1-indexed) → drawing row (0-indexed)
       const cells={};
-      [...row.getElementsByTagNameNS(SP_NS,'c')].forEach(c=>{
+      let cEls=getEls(row,SP_NS,'c');
+      if(!cEls.length)cEls=[...row.getElementsByTagName('c')];
+      cEls.forEach(c=>{
         const ref=c.getAttribute('r')||'';
         const colL=[...ref].filter(x=>x>='A'&&x<='Z').join('');
         const cellType=c.getAttribute('t')||'';
-        const vEl=c.getElementsByTagNameNS(SP_NS,'v')[0];
-        const tEl=c.getElementsByTagNameNS(SP_NS,'t')[0];
+        let vEl=getEls(c,SP_NS,'v')[0]||c.getElementsByTagName('v')[0];
+        let tEl=getEls(c,SP_NS,'t')[0]||c.getElementsByTagName('t')[0];
         let val='';
         if(tEl){val=tEl.textContent;}
         else if(vEl){val=cellType==='s'?ssMap[parseInt(vEl.textContent)]||'':vEl.textContent;}
@@ -1023,14 +1107,18 @@ async function processMoldFile(file){
         id:Date.now()+newMold.length,
         Area:cells['A']||'',Number:cells['B']||'',PartNo:cells['C']||'',
         Material:cells['D']||'',Note:cells['E']||'',
-        MoldImg:imgCache[rowImgs[0]?.path]||'',ProdImg:imgCache[rowImgs[1]?.path]||''
+        MoldImg:imgCache[rowImgs[0]?.path]||'',
+        ProdImg:imgCache[rowImgs[1]?.path]||''
       });
     });
+
     moldData=newMold.filter(r=>r.Area||r.PartNo);
     await saveMoldToStorage();
     renderMoldDB();
-    toast(`模具資料庫載入完成：${moldData.length} 筆 / ${Object.keys(imgCache).length} 張照片`,'success');
-  }catch(e){toast('載入失敗：'+e.message,'error');console.error(e);}
+    const imgCount=Object.keys(imgCache).length;
+    toast(`匯入完成：${moldData.length} 筆 / ${imgCount} 張照片`,imgCount?'success':'warning');
+    if(!imgCount)toast('⚠️ 未找到照片，請開啟 F12 Console 查看診斷訊息','warning');
+  }catch(e){toast('載入失敗：'+e.message,'error');console.error('[MoldImport]',e);}
   loading(false);
 }
 
@@ -1954,11 +2042,48 @@ async function gsSyncSchedule(dir){
   }catch(e){addSyncLog('失敗：'+e.message,'err');toast('失敗：'+e.message,'error');}
   setGsDot(gsConnected?'connected':'disconnected');
 }
+async function gsSyncMold(dir){
+  if(!gsConnected){toast('請先連線 GSheets','warning');return;}
+  addSyncLog(`模具庫 ${dir==='push'?'↑':'↓'}…`,'info');setGsDot('syncing');
+  try{
+    if(dir==='push'){
+      if(!moldData.length)throw new Error('模具資料庫為空');
+      // Strip base64 images — only sync text fields (GSheets cell limit)
+      const rows=moldData.map(r=>({id:r.id,Area:r.Area,Number:r.Number,PartNo:r.PartNo,Material:r.Material,Note:r.Note}));
+      const res=await gsPost({action:'write',sheet:'MoldData',data:rows});
+      addSyncLog(`↑ 模具 ${res.written} 筆`,'ok');
+      document.getElementById('gs-mold-last').textContent=`推送 ${nowStr()} ${res.written}筆`;
+      toast(`模具資料庫推送完成 ${res.written} 筆（照片保留本機）`,'success');
+    }else{
+      const res=await gsGet({action:'read',sheet:'MoldData'});
+      if(res.error)throw new Error(res.error);
+      const pulled=res.data||[];
+      if(!pulled.length){toast('GSheets 模具資料庫為空','info');setGsDot(gsConnected?'connected':'disconnected');return;}
+      // Merge: preserve locally stored images by id
+      const localImgById={};
+      moldData.forEach(r=>{if(r.id)localImgById[r.id]={MoldImg:r.MoldImg||'',ProdImg:r.ProdImg||''};});
+      moldData=pulled.map(r=>({
+        id:r.id||Date.now()+Math.random(),
+        Area:r.Area||'',Number:r.Number||'',PartNo:r.PartNo||'',
+        Material:r.Material||'',Note:r.Note||'',
+        MoldImg:localImgById[r.id]?.MoldImg||'',
+        ProdImg:localImgById[r.id]?.ProdImg||''
+      }));
+      await saveMoldToStorage();
+      renderMoldDB();
+      addSyncLog(`↓ 模具 ${moldData.length} 筆`,'ok');
+      document.getElementById('gs-mold-last').textContent=`拉取 ${nowStr()} ${moldData.length}筆`;
+      toast(`模具資料庫拉取完成 ${moldData.length} 筆`,'success');
+    }
+  }catch(e){addSyncLog('模具失敗：'+e.message,'err');toast('失敗：'+e.message,'error');}
+  setGsDot(gsConnected?'connected':'disconnected');
+}
 async function syncAll(){
   if(!gsConnected){const ok=confirm('尚未測試連線，先測試？');if(ok){await testGsConnection();if(!gsConnected)return;}else return;}
   toast('開始全部同步…','info');
   if(sortedData.length)await gsSyncDB('push');
   if(orders.length)await gsSyncOrders('push');
+  if(moldData.length)await gsSyncMold('push');
   if(scheduleResult)await gsSyncSchedule('push');
   toast('✅ 全部同步完成','success');addSyncLog('=== 全部同步完成 ===','ok');
 }
@@ -2013,13 +2138,30 @@ async function autoSyncPull(){
       await localforage.setItem('heldOrders',heldOrders);
       addSyncLog(`↓ 待出貨 ${heldOrders.length} 筆`,'ok');
     }
+    // 拉取模具資料庫（tabular, text only; merge with local images）
+    try{
+      const moldRes=await gsGet({action:'read',sheet:'MoldData'});
+      if(moldRes.data&&moldRes.data.length>0){
+        const localImgById={};
+        moldData.forEach(r=>{if(r.id)localImgById[r.id]={MoldImg:r.MoldImg||'',ProdImg:r.ProdImg||''};});
+        moldData=moldRes.data.map(r=>({
+          id:r.id||Date.now()+Math.random(),
+          Area:r.Area||'',Number:r.Number||'',PartNo:r.PartNo||'',
+          Material:r.Material||'',Note:r.Note||'',
+          MoldImg:localImgById[r.id]?.MoldImg||'',
+          ProdImg:localImgById[r.id]?.ProdImg||''
+        }));
+        await saveMoldToStorage();
+        addSyncLog(`↓ 模具 ${moldData.length} 筆`,'ok');
+      }
+    }catch(me){addSyncLog('模具拉取略過：'+me.message,'info');}
     // 一律重新渲染所有頁面
     if(dbData.length){
       renderDBTable(sortedData);
       document.getElementById('db-count').textContent=`共 ${dbData.length} 筆`;
       document.getElementById('db-actions').style.display='block';
     }
-    renderOrders();searchOrders();renderHistory();renderHeldOrders();renderReport();
+    renderOrders();searchOrders();renderHistory();renderHeldOrders();renderReport();renderMoldDB();
     updateBackupBar(`GSheets 拉取 ${nowStr()}`);
   }catch(e){addSyncLog('拉取失敗：'+e.message,'err');}
 }
@@ -2037,6 +2179,10 @@ async function autoSyncPushSilent(){
     ps.push(gsPost({action:'writejson',sheet:'OrdersJSON',data:orders}));
     ps.push(gsPost({action:'writejson',sheet:'CompletedJSON',data:completedOrders}));
     ps.push(gsPost({action:'writejson',sheet:'HeldJSON',data:heldOrders}));
+    if(moldData.length){
+      const moldRows=moldData.map(r=>({id:r.id,Area:r.Area,Number:r.Number,PartNo:r.PartNo,Material:r.Material,Note:r.Note}));
+      ps.push(gsPost({action:'write',sheet:'MoldData',data:moldRows}));
+    }
     await Promise.all(ps);
     setGsDot('connected');
     updateBackupBar(`自動同步 ${nowStr()}`);

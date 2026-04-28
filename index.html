@@ -11,6 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh-tw.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
 :root{--bg:#0d1117;--bg2:#161b22;--bgc:#1c2128;--bgh:#21262d;--bdr:#30363d;--tx:#e6edf3;--tx2:#8b949e;--ac:#58a6ff;--gr:#3fb950;--yw:#d29922;--rd:#f85149;--pu:#bc8cff;--or:#ffa657;}
 *{box-sizing:border-box;}
@@ -140,6 +141,12 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
 .pn-opt span{color:var(--tx2);font-size:11px;margin-left:6px;}
 .flatpickr-day{color:var(--tx)!important;}
 .flatpickr-day.selected{background:var(--ac)!important;border-color:var(--ac)!important;color:#000!important;}
+.mold-card{background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:10px;margin-bottom:8px;display:grid;grid-template-columns:80px 80px 1fr auto;gap:10px;align-items:center;}
+@media(max-width:600px){.mold-card{grid-template-columns:60px 60px 1fr;}.mold-card>div:last-child{grid-column:1/-1;}}
+.mold-thumb{width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid var(--bdr);background:var(--bg);cursor:pointer;}
+.mold-thumb-empty{width:80px;height:80px;border-radius:6px;border:2px dashed var(--bdr);display:flex;align-items:center;justify-content:center;color:var(--tx2);font-size:22px;}
+.db-search{padding:7px 11px;border:1px solid var(--bdr);border-radius:6px;background:var(--bg);color:var(--tx);font-size:13px;outline:none;transition:border-color .2s;width:100%;max-width:320px;}
+.db-search:focus{border-color:var(--ac);}
 </style>
 </head>
 <body>
@@ -155,6 +162,52 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
   <div class="bnav-item" onclick="navigate('db');setBottomActive(this)"><span>🗄️</span><span>資料庫</span></div>
   <div class="bnav-item" onclick="document.getElementById('sidebar').classList.toggle('open');document.body.classList.toggle('sidebar-open')"><span>☰</span><span>選單</span></div>
 </nav>
+
+<!-- Image Lightbox -->
+<div class="modal-overlay" id="modal-lightbox" onclick="closeModal('modal-lightbox')">
+  <div style="max-width:90vw;max-height:90vh;display:flex;align-items:center;justify-content:center;">
+    <img id="lightbox-img" style="max-width:90vw;max-height:85vh;border-radius:10px;object-fit:contain;" src="">
+  </div>
+</div>
+
+<!-- Mold Edit Modal -->
+<div class="modal-overlay" id="modal-mold-edit">
+  <div class="modal" style="max-width:560px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h2 style="margin:0;" id="modal-mold-title">新增模具</h2>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-mold-edit')">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div><label>模具位置 (區域)</label><input id="me-area" list="mold-loc-list" placeholder="例：B2左"></div>
+      <div><label>編號</label><input id="me-number" placeholder="編號"></div>
+      <div><label>品號</label><input id="me-partno" placeholder="品號"></div>
+      <div><label>材質</label><input id="me-material" placeholder="材質"></div>
+      <div style="grid-column:1/-1;"><label>備註</label><textarea id="me-note" rows="2" style="resize:vertical;"></textarea></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div>
+        <label>模具照片</label>
+        <div id="me-mold-preview" style="width:100%;height:100px;border:2px dashed var(--bdr);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-bottom:5px;overflow:hidden;" onclick="document.getElementById('me-mold-file').click()">
+          <span style="color:var(--tx2);font-size:22px;">📷</span>
+        </div>
+        <input type="file" id="me-mold-file" accept="image/*" style="display:none;" onchange="previewMoldImg(this,'mold')">
+        <button class="btn btn-ghost btn-sm" style="width:100%;" onclick="document.getElementById('me-mold-file').click()">上傳模具照片</button>
+      </div>
+      <div>
+        <label>成品照片</label>
+        <div id="me-prod-preview" style="width:100%;height:100px;border:2px dashed var(--bdr);border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-bottom:5px;overflow:hidden;" onclick="document.getElementById('me-prod-file').click()">
+          <span style="color:var(--tx2);font-size:22px;">🖼️</span>
+        </div>
+        <input type="file" id="me-prod-file" accept="image/*" style="display:none;" onchange="previewMoldImg(this,'prod')">
+        <button class="btn btn-ghost btn-sm" style="width:100%;" onclick="document.getElementById('me-prod-file').click()">上傳成品照片</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" onclick="saveMoldEdit()">💾 儲存</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-mold-edit')">取消</button>
+    </div>
+  </div>
+</div>
 
 <!-- DB Edit Modal -->
 <div class="modal-overlay" id="modal-db-edit">
@@ -186,6 +239,14 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
       <div><label>下訂日期</label><input id="oe-orderdate" type="date"></div>
       <div><label>交貨日期</label><input id="oe-due" type="date"></div>
       <div><label>交貨地點</label><input id="oe-location" placeholder="地址"></div>
+      <div>
+        <label>L/R 屬性</label>
+        <select id="oe-lr" style="width:100%;">
+          <option value="">無</option>
+          <option value="L">L (左)</option>
+          <option value="R">R (右)</option>
+        </select>
+      </div>
       <div style="display:flex;align-items:center;gap:7px;padding-top:18px;">
         <input type="checkbox" id="oe-urgent" style="width:15px;height:15px;">
         <label for="oe-urgent" style="margin:0;color:var(--rd);font-weight:600;font-size:13px;">🚨 緊急</label>
@@ -280,37 +341,68 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
 
   <!-- ===== DATABASE ===== -->
   <section id="section-db" class="section active">
-    <!-- Sorted FIRST -->
-    <div id="sorted-section" style="display:none;" class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-        <h2 style="margin:0;">✅ 排序結果</h2>
-        <div style="display:flex;gap:7px;flex-wrap:wrap;">
-          <button class="btn btn-success btn-sm" onclick="downloadSortedExcel()">⬇️ 下載 Excel</button>
-          <button class="gs-btn" onclick="gsSyncDB('push')">☁️↑ 推送</button>
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('db','parts')">🗄️ 品號資料庫</button>
+      <button class="tab-btn" onclick="switchTab('db','mold')">📸 模具位置庫</button>
+    </div>
+
+    <!-- ── Tab: 品號資料庫 ── -->
+    <div id="db-parts" class="subtab-content active">
+      <!-- Sorted FIRST -->
+      <div id="sorted-section" style="display:none;" class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <h2 style="margin:0;">✅ 排序結果</h2>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;">
+            <button class="btn btn-success btn-sm" onclick="downloadSortedExcel()">⬇️ 下載 Excel</button>
+            <button class="gs-btn" onclick="gsSyncDB('push')">☁️↑ 推送</button>
+          </div>
+        </div>
+        <div id="sorted-preview" style="max-height:480px;overflow-y:auto;"></div>
+      </div>
+      <!-- Upload -->
+      <div class="card">
+        <h2>上傳品號資料庫 Excel</h2>
+        <div class="upload-zone" onclick="document.getElementById('db-file').click()" ondragover="dragOver(event,this)" ondragleave="this.classList.remove('drag-over')" ondrop="dropFile(event,'db')">
+          <div style="font-size:34px;">📤</div>
+          <div style="font-size:15px;font-weight:600;margin:7px 0;">點擊或拖曳 Excel 檔案</div>
+          <div style="font-size:12px;">欄位：品號、機台、產品、材料、顏色、備注、CAPA、NSF、KST</div>
+        </div>
+        <input type="file" id="db-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="loadDBFile(event)">
+      </div>
+      <!-- DB table -->
+      <div id="db-actions" style="display:none;" class="card">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+          <button class="btn btn-primary" onclick="sortDatabase()">🔄 自動分類排序</button>
+          <button class="btn btn-success btn-sm" onclick="addDBRow()">➕ 新增品項</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearDB()">🗑️ 清除</button>
+          <button class="gs-btn" onclick="gsSyncDB('pull')">☁️↓ 從 GSheets 匯入</button>
+          <span id="db-count" class="badge b-blue"></span>
+        </div>
+        <input class="db-search" id="parts-search" placeholder="🔍 搜尋品號、材料、產品…" oninput="filterPartsDB()" style="margin-bottom:10px;">
+        <div style="overflow-x:auto;" id="db-table-container"></div>
+      </div>
+    </div>
+
+    <!-- ── Tab: 模具位置庫 ── -->
+    <div id="db-mold" class="subtab-content">
+      <div class="card">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+          <h2 style="margin:0;">📸 模具位置資料庫</h2>
+          <span id="mold-count" class="badge b-purple">0 筆</span>
+        </div>
+        <div class="upload-zone" onclick="document.getElementById('mold-xl-file').click()" ondragover="dragOver(event,this)" ondragleave="this.classList.remove('drag-over')" ondrop="dropFile(event,'mold')" style="padding:20px;margin-bottom:12px;">
+          <div style="font-size:28px;">📂</div>
+          <div style="font-size:13px;font-weight:600;margin:5px 0;">點擊或拖曳「昌威模具總覽.xlsx」</div>
+          <div style="font-size:11px;color:var(--tx2);">自動匯入模具位置、品號、材質、照片</div>
+        </div>
+        <input type="file" id="mold-xl-file" accept=".xlsx" style="display:none;" onchange="loadMoldFile(event)">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-success btn-sm" onclick="openMoldEdit(-1)">➕ 新增模具</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportMoldExcel()">⬇️ 匯出 Excel</button>
+          <input class="db-search" id="mold-search" placeholder="🔍 搜尋品號、位置、材質…" oninput="renderMoldDB()" style="max-width:280px;">
         </div>
       </div>
-      <div id="sorted-preview" style="max-height:480px;overflow-y:auto;"></div>
-    </div>
-    <!-- Upload below -->
-    <div class="card">
-      <h2>上傳模具資料庫 Excel</h2>
-      <div class="upload-zone" onclick="document.getElementById('db-file').click()" ondragover="dragOver(event,this)" ondragleave="this.classList.remove('drag-over')" ondrop="dropFile(event,'db')">
-        <div style="font-size:34px;">📤</div>
-        <div style="font-size:15px;font-weight:600;margin:7px 0;">點擊或拖曳 Excel 檔案</div>
-        <div style="font-size:12px;">欄位：品號、機台、產品、材料、顏色、備注、CAPA、NSF、KST</div>
-      </div>
-      <input type="file" id="db-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="loadDBFile(event)">
-    </div>
-    <!-- DB table -->
-    <div id="db-actions" style="display:none;" class="card">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
-        <button class="btn btn-primary" onclick="sortDatabase()">🔄 自動分類排序</button>
-        <button class="btn btn-success btn-sm" onclick="addDBRow()">➕ 新增品項</button>
-        <button class="btn btn-ghost btn-sm" onclick="clearDB()">🗑️ 清除</button>
-        <button class="gs-btn" onclick="gsSyncDB('pull')">☁️↓ 從 GSheets 匯入</button>
-        <span id="db-count" class="badge b-blue"></span>
-      </div>
-      <div style="overflow-x:auto;" id="db-table-container"></div>
+      <div id="mold-db-container"></div>
     </div>
   </section>
 
@@ -348,11 +440,17 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
           <div><label>下訂日期</label><input id="ord-orderdate" readonly placeholder="選擇日期"></div>
           <div><label>交貨日期 <span style="color:var(--tx2);">(選填)</span></label><input id="ord-due" readonly placeholder="選擇日期"></div>
           <div><label>交貨地點</label><input id="ord-location" placeholder="地址"></div>
+          <datalist id="mold-loc-list"></datalist>
           <div style="display:flex;align-items:center;gap:7px;padding-top:18px;">
             <input type="checkbox" id="ord-urgent" style="width:15px;height:15px;">
             <label for="ord-urgent" style="margin:0;color:var(--rd);font-weight:600;font-size:13px;">🚨 緊急</label>
           </div>
+          <div style="display:flex;align-items:center;gap:7px;padding-top:18px;">
+            <input type="checkbox" id="ord-lr-split" style="width:15px;height:15px;" onchange="updateLRPreview()">
+            <label for="ord-lr-split" style="margin:0;color:var(--pu);font-weight:600;font-size:13px;">🔀 L/R 拆分（各 50%）</label>
+          </div>
           <div style="grid-column:1/-1;"><label>備注</label><textarea id="ord-note" rows="2" placeholder="訂單備注…" style="resize:vertical;"></textarea></div>
+          <div id="lr-preview" style="grid-column:1/-1;display:none;background:rgba(188,140,255,.1);border:1px solid var(--pu);border-radius:7px;padding:9px 12px;font-size:12px;"></div>
         </div>
         <div style="border:1px solid var(--bdr);border-radius:8px;padding:12px;margin-bottom:12px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -363,6 +461,10 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
             <span style="font-size:11px;color:var(--tx2);">品號</span>
             <span style="font-size:11px;color:var(--tx2);">數量</span>
             <span></span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 90px;gap:6px;margin-bottom:5px;">
+            <span style="font-size:11px;color:var(--tx2);">模具位置（區域）</span>
+            <span style="font-size:11px;color:var(--tx2);">編號</span>
           </div>
           <div id="draft-items"><div style="color:var(--tx2);font-size:12px;text-align:center;padding:12px;">點擊「新增品項」加入模具品號</div></div>
         </div>
@@ -398,6 +500,7 @@ h1{font-size:22px;font-weight:700;}h2{font-size:17px;font-weight:600;margin:0 0 
       <div class="card">
         <h2>⚙️ 排程設定</h2>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:16px;">
+          <div><label>排程起始日期</label><input type="date" id="cfg-start-date" title="留空則從今天開始"></div>
           <div><label>上班時間</label><input type="time" id="cfg-work-start" oninput="updateConfigCapPreview()"></div>
           <div><label>下班時間</label><input type="time" id="cfg-work-end" oninput="updateConfigCapPreview()"></div>
           <div><label>休息時間（分鐘）</label><input type="number" id="cfg-break-min" min="0" max="240" placeholder="60" oninput="updateConfigCapPreview()"></div>
@@ -522,9 +625,11 @@ const MACHINES = [4,10,15,20,30,35,40,60];
 const CYCLE_TIME_BASE = 50, COOLING_TIME = 40;
 const MOLD_CHANGE = {sameMaterial:20,differentMaterial:45,differentTonnageGroup:60};
 const TONNAGE_GROUPS = [[4,10],[15,20,30],[35,40],[60]];
+const MOLD_LOCATIONS = ['B2左','B3左','B3右','B4','B5','C1左','C1右','C2左','C2右','C3左','C3右','C4左','C4右','C5','D1','D2','D3','E','F','亞強','冠麗','山亞','料區活洋','新入','景陽','聯統16','裕笙'];
 
 // ── STATE ──────────────────────────────────────
 let dbData=[], sortedData=[], orders=[], completedOrders=[], heldOrders=[], scheduleResult=null;
+let moldData=[];
 let gsConnected=false, syncLog=[];
 let autoBackupTimer=null, editingDBIdx=-1;
 let autoSyncDebounceTimer=null, autoSyncIntervalTimer=null;
@@ -537,6 +642,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadFromStorage();
   initDatePickers();
   buildPartNoList();
+  // populate mold location datalist
+  const dl=document.getElementById('mold-loc-list');
+  if(dl)dl.innerHTML=MOLD_LOCATIONS.map(l=>`<option value="${l}">`).join('');
   renderOrders();
   renderDraftItems();
   searchOrders();
@@ -566,6 +674,7 @@ async function loadFromStorage(){
     const comp=await localforage.getItem('completedOrders'); if(comp)completedOrders=comp;
     const held=await localforage.getItem('heldOrders'); if(held)heldOrders=held;
     const sc=await localforage.getItem('scheduleConfig'); if(sc)scheduleConfig={...scheduleConfig,...sc};
+    const mold=await localforage.getItem('moldData'); if(mold)moldData=mold;
   }catch(e){console.warn(e);}
 }
 async function saveToStorage(){
@@ -576,6 +685,9 @@ async function saveToStorage(){
   await localforage.setItem('scheduleConfig',scheduleConfig);
   if(scheduleResult)await localforage.setItem('scheduleResult',scheduleResult);
   scheduleAutoSyncPush();
+}
+async function saveMoldToStorage(){
+  await localforage.setItem('moldData',moldData);
 }
 
 // ── AUTO BACKUP ────────────────────────────────
@@ -624,6 +736,7 @@ function switchTab(sec,tab){
   document.getElementById(sec+'-'+tab).classList.add('active');
   if(tab==='gantt'&&scheduleResult)renderGantt(scheduleResult);
   if(tab==='machine'&&scheduleResult)renderMachineUtil(scheduleResult);
+  if(tab==='mold')renderMoldDB();
 }
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 
@@ -647,7 +760,7 @@ function initDatePickers(){
 
 // ── DRAG DROP ──────────────────────────────────
 function dragOver(e,el){e.preventDefault();el.classList.add('drag-over');}
-function dropFile(e,target){e.preventDefault();e.currentTarget.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f&&target==='db')processDBFile(f);}
+function dropFile(e,target){e.preventDefault();e.currentTarget.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(!f)return;if(target==='db')processDBFile(f);if(target==='mold')processMoldFile(f);}
 
 // ── DB NORMALIZE (9 cols) ─────────────────────
 function get(r,...keys){for(const k of keys){if(r[k]!==undefined&&r[k]!=='')return r[k];}return '';}
@@ -797,14 +910,257 @@ function deleteDBRow(idx){
 }
 function clearDB(){if(!confirm('確定清除？'))return;dbData=[];sortedData=[];document.getElementById('db-actions').style.display='none';document.getElementById('sorted-section').style.display='none';saveToStorage();toast('已清除','info');}
 
+// ── PARTS DB SEARCH ────────────────────────────
+function filterPartsDB(){
+  const q=(document.getElementById('parts-search')||{}).value||'';
+  const data=q?((sortedData.length?sortedData:dbData).filter(r=>{
+    const s=`${r.PartNo} ${r.Product} ${r.Material} ${r.Color} ${r.Note}`.toLowerCase();
+    return s.includes(q.toLowerCase());
+  })):sortedData.length?sortedData:dbData;
+  renderDBTable(data);
+}
+
+// ── MOLD DATABASE ───────────────────────────────
+let editingMoldIdx=-1, moldImgTemp={mold:'',prod:''};
+
+function loadMoldFile(ev){const f=ev.target.files[0];if(f)processMoldFile(f);}
+async function processMoldFile(file){
+  loading(true);
+  try{
+    const ab=await file.arrayBuffer();
+    const zip=await JSZip.loadAsync(ab);
+
+    // Shared strings table (xlsx stores most cell text here by index)
+    const SP_NS='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+    const ssFile=zip.file('xl/sharedStrings.xml');
+    const ssMap=[];
+    if(ssFile){
+      const ssXml=await ssFile.async('text');
+      const ssd=new DOMParser().parseFromString(ssXml,'text/xml');
+      [...ssd.getElementsByTagNameNS(SP_NS,'si')].forEach(si=>{
+        ssMap.push([...si.getElementsByTagNameNS(SP_NS,'t')].map(t=>t.textContent).join(''));
+      });
+    }
+
+    // Drawing rels: rId → media path
+    const XDR_NS='http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing';
+    const A_NS='http://schemas.openxmlformats.org/drawingml/2006/main';
+    const R_NS='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+    const REL_NS='http://schemas.openxmlformats.org/package/2006/relationships';
+    const ridMap={};
+    const drawRelsFile=zip.file('xl/drawings/_rels/drawing1.xml.rels');
+    if(drawRelsFile){
+      const drawRelsXml=await drawRelsFile.async('text');
+      const dr=new DOMParser().parseFromString(drawRelsXml,'text/xml');
+      const relEls=[...dr.getElementsByTagNameNS(REL_NS,'Relationship')];
+      // fallback: no-namespace parse (some tools omit xmlns on rels)
+      const rels=relEls.length?relEls:[...dr.getElementsByTagName('Relationship')];
+      rels.forEach(r=>{ridMap[r.getAttribute('Id')]=r.getAttribute('Target').replace('../','xl/');});
+    }
+
+    // Drawing XML: map (row,col) → media path using namespace-aware queries
+    const rowImgMap={};
+    const drawFile=zip.file('xl/drawings/drawing1.xml');
+    if(drawFile){
+      const drawXml=await drawFile.async('text');
+      const dd=new DOMParser().parseFromString(drawXml,'text/xml');
+      const anchors=[
+        ...dd.getElementsByTagNameNS(XDR_NS,'twoCellAnchor'),
+        ...dd.getElementsByTagNameNS(XDR_NS,'oneCellAnchor')
+      ];
+      anchors.forEach(a=>{
+        const fromEl=a.getElementsByTagNameNS(XDR_NS,'from')[0];if(!fromEl)return;
+        const rowEl=fromEl.getElementsByTagNameNS(XDR_NS,'row')[0];
+        const colEl=fromEl.getElementsByTagNameNS(XDR_NS,'col')[0];
+        if(!rowEl||!colEl)return;
+        const row=parseInt(rowEl.textContent);
+        const col=parseInt(colEl.textContent);
+        const blip=a.getElementsByTagNameNS(A_NS,'blip')[0];if(!blip)return;
+        const rId=blip.getAttributeNS(R_NS,'embed');
+        if(rId&&ridMap[rId]){
+          if(!rowImgMap[row])rowImgMap[row]=[];
+          rowImgMap[row].push({col,path:ridMap[rId]});
+        }
+      });
+      // Sort each row's images by column so first=MoldImg, second=ProdImg
+      Object.keys(rowImgMap).forEach(r=>{rowImgMap[r].sort((a,b)=>a.col-b.col);});
+    }
+
+    // Load all needed images as base64 (detect mime from extension)
+    const neededPaths=new Set(Object.values(rowImgMap).flatMap(imgs=>imgs.map(x=>x.path)));
+    const imgCache={};
+    await Promise.all([...neededPaths].map(async p=>{
+      const f2=zip.file(p);
+      if(f2){
+        const b64=await f2.async('base64');
+        const ext=(p.split('.').pop()||'jpeg').toLowerCase();
+        const mime=ext==='png'?'image/png':ext==='gif'?'image/gif':'image/jpeg';
+        imgCache[p]=`data:${mime};base64,`+b64;
+      }
+    }));
+
+    // Sheet data (namespace-aware; handles shared strings)
+    const sheetXml=await zip.file('xl/worksheets/sheet1.xml').async('text');
+    const sd=new DOMParser().parseFromString(sheetXml,'text/xml');
+    const rows=[...sd.getElementsByTagNameNS(SP_NS,'row')].slice(1); // skip header row
+    const newMold=[];
+    rows.forEach(row=>{
+      const rn=parseInt(row.getAttribute('r')||0)-1; // drawing row is 0-indexed
+      const cells={};
+      [...row.getElementsByTagNameNS(SP_NS,'c')].forEach(c=>{
+        const ref=c.getAttribute('r')||'';
+        const colL=[...ref].filter(x=>x>='A'&&x<='Z').join('');
+        const cellType=c.getAttribute('t')||'';
+        const vEl=c.getElementsByTagNameNS(SP_NS,'v')[0];
+        const tEl=c.getElementsByTagNameNS(SP_NS,'t')[0];
+        let val='';
+        if(tEl){val=tEl.textContent;}
+        else if(vEl){val=cellType==='s'?ssMap[parseInt(vEl.textContent)]||'':vEl.textContent;}
+        cells[colL]=val;
+      });
+      const rowImgs=rowImgMap[rn]||[];
+      newMold.push({
+        id:Date.now()+newMold.length,
+        Area:cells['A']||'',Number:cells['B']||'',PartNo:cells['C']||'',
+        Material:cells['D']||'',Note:cells['E']||'',
+        MoldImg:imgCache[rowImgs[0]?.path]||'',ProdImg:imgCache[rowImgs[1]?.path]||''
+      });
+    });
+    moldData=newMold.filter(r=>r.Area||r.PartNo);
+    await saveMoldToStorage();
+    renderMoldDB();
+    toast(`模具資料庫載入完成：${moldData.length} 筆 / ${Object.keys(imgCache).length} 張照片`,'success');
+  }catch(e){toast('載入失敗：'+e.message,'error');console.error(e);}
+  loading(false);
+}
+
+function renderMoldDB(){
+  const cnt=document.getElementById('mold-count');if(cnt)cnt.textContent=`${moldData.length} 筆`;
+  const c=document.getElementById('mold-db-container');if(!c)return;
+  const q=((document.getElementById('mold-search')||{}).value||'').toLowerCase();
+  const data=q?moldData.filter(r=>`${r.Area} ${r.PartNo} ${r.Material} ${r.Note} ${r.Number} ${r.Area}-${r.Number}`.toLowerCase().includes(q)):moldData;
+  if(!data.length){
+    c.innerHTML=`<div class="card" style="text-align:center;padding:30px;color:var(--tx2);">${moldData.length?'查無符合結果':'請上傳昌威模具總覽.xlsx'}</div>`;
+    return;
+  }
+  // Group by Area
+  const groups={};
+  data.forEach((r,gi)=>{const a=r.Area||'未分類';if(!groups[a])groups[a]=[];groups[a].push({r,gi:moldData.indexOf(r)});});
+  let html='';
+  Object.keys(groups).sort().forEach(area=>{
+    const items=groups[area];
+    html+=`<div class="mat-header" style="margin-top:8px;">
+      <span style="font-weight:700;color:var(--pu);">📍 ${area}</span>
+      <span class="badge b-purple">${items.length} 筆</span>
+    </div>`;
+    items.forEach(({r,gi})=>{
+      html+=`<div class="mold-card">
+        <div>
+          ${r.MoldImg?`<img class="mold-thumb" src="${r.MoldImg}" alt="模具" onclick="showLightbox('${r.MoldImg.substring(0,50)}...',${gi},0)" title="點擊放大">`:
+            `<div class="mold-thumb-empty" title="無模具照片">🔩</div>`}
+          <div style="font-size:10px;color:var(--tx2);text-align:center;margin-top:2px;">模具</div>
+        </div>
+        <div>
+          ${r.ProdImg?`<img class="mold-thumb" src="${r.ProdImg}" alt="成品" onclick="showLightbox('${r.ProdImg.substring(0,50)}...',${gi},1)" title="點擊放大">`:
+            `<div class="mold-thumb-empty" title="無成品照片">📦</div>`}
+          <div style="font-size:10px;color:var(--tx2);text-align:center;margin-top:2px;">成品</div>
+        </div>
+        <div>
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:4px;">
+            <span class="badge b-purple">${r.Area&&r.Number?r.Area+'-'+r.Number:r.Number?'編號'+r.Number:r.Area||'—'}</span>
+            <strong style="color:var(--ac);font-size:14px;">${r.PartNo||'—'}</strong>
+          </div>
+          <div style="font-size:12px;margin-bottom:3px;"><span style="color:var(--tx2);">材質：</span>${r.Material||'—'}</div>
+          ${r.Note?`<div style="font-size:12px;color:var(--yw);">📝 ${r.Note}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <button class="btn btn-ghost btn-sm" onclick="openMoldEdit(${gi})">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteMoldRow(${gi})">✕</button>
+        </div>
+      </div>`;
+    });
+  });
+  c.innerHTML=html;
+}
+
+function showLightbox(_, idx, imgType){
+  const r=moldData[idx];
+  const src=imgType===0?r.MoldImg:r.ProdImg;
+  if(!src)return;
+  document.getElementById('lightbox-img').src=src;
+  document.getElementById('modal-lightbox').classList.add('open');
+}
+
+let editingMoldImgMold='', editingMoldImgProd='';
+function openMoldEdit(idx){
+  editingMoldIdx=idx;
+  const r=idx===-1?{Area:'',Number:'',PartNo:'',Material:'',Note:'',MoldImg:'',ProdImg:''}:moldData[idx];
+  document.getElementById('modal-mold-title').textContent=idx===-1?'新增模具':'編輯：'+r.PartNo;
+  document.getElementById('me-area').value=r.Area||'';
+  document.getElementById('me-number').value=r.Number||'';
+  document.getElementById('me-partno').value=r.PartNo||'';
+  document.getElementById('me-material').value=r.Material||'';
+  document.getElementById('me-note').value=r.Note||'';
+  editingMoldImgMold=r.MoldImg||'';
+  editingMoldImgProd=r.ProdImg||'';
+  const mp=document.getElementById('me-mold-preview');
+  const pp=document.getElementById('me-prod-preview');
+  mp.innerHTML=r.MoldImg?`<img src="${r.MoldImg}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;">`:'<span style="color:var(--tx2);font-size:22px;">📷</span>';
+  pp.innerHTML=r.ProdImg?`<img src="${r.ProdImg}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;">`:'<span style="color:var(--tx2);font-size:22px;">🖼️</span>';
+  document.getElementById('modal-mold-edit').classList.add('open');
+}
+function previewMoldImg(input,type){
+  const f=input.files[0];if(!f)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const src=e.target.result;
+    if(type==='mold'){
+      editingMoldImgMold=src;
+      document.getElementById('me-mold-preview').innerHTML=`<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;">`;
+    }else{
+      editingMoldImgProd=src;
+      document.getElementById('me-prod-preview').innerHTML=`<img src="${src}" style="width:100%;height:100%;object-fit:cover;border-radius:4px;">`;
+    }
+  };reader.readAsDataURL(f);
+}
+async function saveMoldEdit(){
+  const r={
+    id:editingMoldIdx===-1?Date.now():(moldData[editingMoldIdx]?.id||Date.now()),
+    Area:document.getElementById('me-area').value.trim(),
+    Number:document.getElementById('me-number').value.trim(),
+    PartNo:document.getElementById('me-partno').value.trim(),
+    Material:document.getElementById('me-material').value.trim(),
+    Note:document.getElementById('me-note').value.trim(),
+    MoldImg:editingMoldImgMold,
+    ProdImg:editingMoldImgProd
+  };
+  if(!r.PartNo&&!r.Area){toast('請填入品號或位置','warning');return;}
+  if(editingMoldIdx===-1)moldData.push(r);
+  else moldData[editingMoldIdx]=r;
+  await saveMoldToStorage();
+  renderMoldDB();closeModal('modal-mold-edit');toast('已儲存','success');
+}
+async function deleteMoldRow(idx){
+  if(!confirm('確定刪除此模具資料？'))return;
+  moldData.splice(idx,1);
+  await saveMoldToStorage();renderMoldDB();toast('已刪除','info');
+}
+function exportMoldExcel(){
+  if(!moldData.length){toast('無模具資料','warning');return;}
+  const rows=[['區域','編號','品號','材質','備註']];
+  moldData.forEach(r=>rows.push([r.Area,r.Number,r.PartNo,r.Material,r.Note]));
+  const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'模具位置');XLSX.writeFile(wb,`昌威模具_${today()}.xlsx`);
+  toast('已下載（照片不含在Excel中）','info');
+}
 
 // ── ORDERS – DRAFT ─────────────────────────────
 function buildPartNoList(){/* autocomplete now handled by onPnInput */}
 function addDraftItem(){
-  orderDraftItems.push({PartNo:'',Qty:1,Tonnage:0,Material:'',Product:'',Color:''});
-  renderDraftItems();
+  orderDraftItems.push({PartNo:'',Qty:1,Tonnage:0,Material:'',Product:'',Color:'',MoldLocation:'',MoldNumber:''});
+  renderDraftItems();updateLRPreview();
 }
-function removeDraftItem(idx){orderDraftItems.splice(idx,1);renderDraftItems();}
+function removeDraftItem(idx){orderDraftItems.splice(idx,1);renderDraftItems();updateLRPreview();}
 function renderDraftItems(){
   const c=document.getElementById('draft-items');
   if(!orderDraftItems.length){c.innerHTML='<div style="color:var(--tx2);font-size:12px;text-align:center;padding:12px;">點擊「新增品項」加入模具品號</div>';return;}
@@ -821,10 +1177,18 @@ function renderDraftItems(){
         <div class="pn-dropdown" id="pn-drop-${i}"></div>
       </div>
       <input type="number" placeholder="數量" value="${item.Qty}" min="1"
-        oninput="orderDraftItems[${i}].Qty=Number(this.value)||1">
+        oninput="orderDraftItems[${i}].Qty=Number(this.value)||1;updateLRPreview()">
       <button class="btn btn-danger btn-sm" onclick="removeDraftItem(${i})">✕</button>
     </div>
-    ${item.PartNo&&item.Material?`<div style="font-size:11px;color:var(--tx2);margin-bottom:5px;padding-left:2px;">📦 ${item.Material} | ${item.Tonnage}T${item.Color?' | 🎨'+item.Color:''}${item.Product?' | '+item.Product:''}</div>`:''}
+    <div style="display:grid;grid-template-columns:1fr 90px;gap:6px;margin-bottom:8px;padding-left:2px;">
+      <input type="text" list="mold-loc-list" placeholder="📍 模具位置（例：B2左）" value="${item.MoldLocation||''}"
+        style="font-size:12px;padding:5px 8px;"
+        oninput="orderDraftItems[${i}].MoldLocation=this.value" autocomplete="off">
+      <input type="text" placeholder="編號（例：1）" value="${item.MoldNumber||''}"
+        style="font-size:12px;padding:5px 8px;"
+        oninput="orderDraftItems[${i}].MoldNumber=this.value">
+    </div>
+    ${item.PartNo&&item.Material?`<div style="font-size:11px;color:var(--tx2);margin-bottom:5px;padding-left:2px;">📦 ${item.Material} | ${item.Tonnage}T${item.Color?' | 🎨'+item.Color:''}${item.Product?' | '+item.Product:''}${item.MoldLocation?` | 📍${item.MoldLocation}${item.MoldNumber?'-'+item.MoldNumber:''}`:''}</div>`:''}
   `).join('');
 }
 let pnCursorIdx=-1;
@@ -889,8 +1253,8 @@ function submitOrder(){
     item.RequiredMachine=MACHINES.find(m=>m>=item.Tonnage)||MACHINES[MACHINES.length-1];
   });
   const now=new Date().toISOString();
-  orders.push({
-    id:Date.now(),OrderNo:no||`ORD-${today()}`,
+  const lrSplit=document.getElementById('ord-lr-split').checked;
+  const baseFields={
     Company:document.getElementById('ord-company').value.trim(),
     Contact:document.getElementById('ord-contact').value.trim(),
     Phone:document.getElementById('ord-phone').value.trim(),
@@ -898,44 +1262,91 @@ function submitOrder(){
     Due:due,Location:document.getElementById('ord-location').value.trim(),
     Note:document.getElementById('ord-note').value.trim(),
     Urgent:document.getElementById('ord-urgent').checked,
-    items:valid,createdAt:now,updatedAt:now
-  });
+    createdAt:now,updatedAt:now
+  };
+  if(lrSplit){
+    const baseNo=no||`ORD-${today()}`;
+    const lItems=valid.map(i=>({...i,Qty:Math.floor(i.Qty/2)}));
+    const rItems=valid.map(i=>({...i,Qty:Math.ceil(i.Qty/2)}));
+    orders.push({...baseFields,id:Date.now(),OrderNo:baseNo+'-L',LR:'L',items:lItems});
+    orders.push({...baseFields,id:Date.now()+1,OrderNo:baseNo+'-R',LR:'R',items:rItems});
+    toast(`L/R 拆分完成：各 ${lItems.length} 品項`,'success');
+  }else{
+    orders.push({...baseFields,id:Date.now(),OrderNo:no||`ORD-${today()}`,LR:null,items:valid});
+    toast(`訂單加入，${valid.length} 個品項`,'success');
+  }
   orderDraftItems=[];
   ['ord-no','ord-company','ord-contact','ord-phone','ord-location','ord-orderdate','ord-note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('ord-urgent').checked=false;
+  document.getElementById('ord-lr-split').checked=false;
+  document.getElementById('lr-preview').style.display='none';
   renderDraftItems();renderOrders();searchOrders();saveToStorage();
-  toast(`訂單加入，${valid.length} 個品項`,'success');
+}
+function updateLRPreview(){
+  const on=document.getElementById('ord-lr-split').checked;
+  const box=document.getElementById('lr-preview');
+  if(!on){box.style.display='none';return;}
+  const totalQty=orderDraftItems.reduce((s,i)=>s+(Number(i.Qty)||0),0);
+  const lQty=Math.floor(totalQty/2),rQty=Math.ceil(totalQty/2);
+  box.style.display='block';
+  box.innerHTML=`<span style="color:var(--pu);font-weight:600;">🔀 L/R 拆分預覽</span><span style="margin-left:12px;">總量 <strong>${totalQty}</strong> → <span style="color:var(--ac);">L (左) ${lQty} 件</span> + <span style="color:var(--gr);">R (右) ${rQty} 件</span></span>`;
 }
 function renderOrders(){
   const list=document.getElementById('schedule-list');
   document.getElementById('pending-count').textContent=orders.length;
   if(!orders.length){list.innerHTML='<div style="color:var(--tx2);text-align:center;padding:18px;">尚無待排程訂單</div>';return;}
-  list.innerHTML=orders.map((o,i)=>`
-    <div class="order-card ${o.Urgent?'urgent':''}">
-      <div class="order-card-header">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          ${o.Urgent?'<span class="badge b-red">🚨 緊急</span>':''}
-          <strong style="color:var(--ac);">${o.OrderNo}</strong>
-          ${o.Company?`<span class="badge b-purple">${o.Company}</span>`:''}
-          ${o.OrderDate?`<span class="badge b-orange">📅下訂 ${o.OrderDate}</span>`:''}
-          <span class="badge b-yellow">交貨 ${o.Due}</span>
+  // Group by first item's MoldLocation+MoldNumber
+  const groups={};
+  orders.forEach((o,i)=>{
+    const it=o.items&&o.items[0];
+    const loc=it?.MoldLocation||o.MoldLocation||'未指定位置';
+    const num=it?.MoldNumber||'';
+    const key=num?`${loc}-${num}`:loc;
+    if(!groups[key])groups[key]=[];groups[key].push({o,i});
+  });
+  const lrColor={L:'var(--ac)',R:'var(--gr)'};
+  let html='';
+  Object.keys(groups).sort().forEach(loc=>{
+    const items=groups[loc];
+    const lCount=items.filter(({o})=>o.LR==='L').length;
+    const rCount=items.filter(({o})=>o.LR==='R').length;
+    html+=`<div class="mat-header" style="margin-top:8px;">
+      <span style="font-weight:700;color:var(--or);">📍 ${loc}</span>
+      <div style="display:flex;gap:6px;align-items:center;">
+        ${lCount?`<span class="badge b-blue">L×${lCount}</span>`:''}
+        ${rCount?`<span class="badge b-green">R×${rCount}</span>`:''}
+        <span class="badge b-orange">${items.length} 訂單</span>
+      </div>
+    </div>`;
+    items.forEach(({o,i})=>{
+      const lrBadge=o.LR?`<span style="display:inline-flex;align-items:center;padding:2px 10px;border-radius:10px;font-size:12px;font-weight:700;background:${o.LR==='L'?'rgba(88,166,255,.25)':'rgba(63,185,80,.25)'};color:${lrColor[o.LR]||'var(--tx)'};">${o.LR==='L'?'◀ L 左':'▶ R 右'}</span>`:'';
+      html+=`<div class="order-card ${o.Urgent?'urgent':''}" style="margin-left:0;">
+        <div class="order-card-header">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            ${o.Urgent?'<span class="badge b-red">🚨 緊急</span>':''}
+            ${lrBadge}
+            <strong style="color:var(--ac);">${o.OrderNo}</strong>
+            ${o.Company?`<span class="badge b-purple">${o.Company}</span>`:''}
+            ${o.OrderDate?`<span class="badge b-orange">📅下訂 ${o.OrderDate}</span>`:''}
+            ${o.Due?`<span class="badge b-yellow">交貨 ${o.Due}</span>`:''}
+          </div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;">
+            <button class="btn btn-success btn-sm" onclick="markOrderComplete('${o.id}')" title="標記完成，移入歷史記錄">✅ 完成</button>
+            <button class="btn btn-warning btn-sm" onclick="markOrderHeld('${o.id}')" title="已生產，等待出貨">📦 已生產</button>
+            <button class="btn btn-ghost btn-sm" onclick="openEditOrder('${o.id}')">✏️</button>
+            <button class="btn btn-danger btn-sm" onclick="removeOrder(${i})">✕</button>
+          </div>
         </div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap;">
-          <button class="btn btn-success btn-sm" onclick="markOrderComplete('${o.id}')" title="標記完成，移入歷史記錄">✅ 完成</button>
-          <button class="btn btn-warning btn-sm" onclick="markOrderHeld('${o.id}')" title="已生產，等待出貨">📦 已生產</button>
-          <button class="btn btn-ghost btn-sm" onclick="openEditOrder('${o.id}')">✏️</button>
-          <button class="btn btn-danger btn-sm" onclick="removeOrder(${i})">✕</button>
+        <div style="font-size:12px;color:var(--tx2);margin-bottom:5px;">
+          ${o.Contact?`👤${o.Contact} `:''}${o.Phone?`📞${o.Phone} `:''}${o.Location?`📍${o.Location}`:''}
+          ${o.updatedAt?`<span style="float:right;font-size:11px;">最近更新：${new Date(o.updatedAt).toLocaleString('zh-TW')}</span>`:''}
         </div>
-      </div>
-      <div style="font-size:12px;color:var(--tx2);margin-bottom:5px;">
-        ${o.Contact?`👤${o.Contact} `:''}${o.Phone?`📞${o.Phone} `:''}${o.Location?`📍${o.Location}`:''}
-        ${o.updatedAt?`<span style="float:right;font-size:11px;">最近更新：${new Date(o.updatedAt).toLocaleString('zh-TW')}</span>`:''}
-      </div>
-      ${o.Note?`<div style="font-size:12px;color:var(--yw);margin-bottom:4px;">📝 ${o.Note}</div>`:''}
-      <div style="font-size:12px;">
-        ${o.items.map(it=>`<span style="margin-right:8px;"><span style="color:var(--ac);">${it.PartNo}</span>×${it.Qty} <span class="badge b-blue">${it.Tonnage}T</span></span>`).join('')}
-      </div>
-    </div>`).join('');
+        ${o.Note?`<div style="font-size:12px;color:var(--yw);margin-bottom:4px;">📝 ${o.Note}</div>`:''}
+        <div style="font-size:12px;">${o.items.map(it=>{const mp=it.MoldLocation?(it.MoldLocation+(it.MoldNumber?'-'+it.MoldNumber:'')):'';return`<span style="margin-right:8px;"><span style="color:var(--ac);">${it.PartNo}</span>×${it.Qty} <span class="badge b-blue">${it.Tonnage}T</span>${mp?`<span class="badge b-orange" style="font-size:10px;">📍${mp}</span>`:''}</span>`;}).join('')}</div>
+      </div>`;
+    });
+  });
+  list.innerHTML=html;
 }
 function removeOrder(i){orders.splice(i,1);renderOrders();searchOrders();saveToStorage();}
 function clearOrders(){if(!confirm('清除所有訂單？'))return;orders=[];renderOrders();searchOrders();saveToStorage();}
@@ -1013,6 +1424,7 @@ function openEditOrder(id,source='orders'){
   document.getElementById('oe-orderdate').value=o.OrderDate||'';
   document.getElementById('oe-due').value=o.Due||'';
   document.getElementById('oe-location').value=o.Location||'';
+  document.getElementById('oe-lr').value=o.LR||'';
   document.getElementById('oe-urgent').checked=!!o.Urgent;
   document.getElementById('oe-note').value=o.Note||'';
   renderEditItems();
@@ -1022,11 +1434,15 @@ function renderEditItems(){
   const c=document.getElementById('oe-items');
   if(!editOrderItems.length){c.innerHTML='<div style="color:var(--tx2);font-size:12px;text-align:center;padding:10px;">尚無品項</div>';return;}
   c.innerHTML=editOrderItems.map((it,i)=>`
-    <div style="display:grid;grid-template-columns:2fr 80px 80px auto;gap:6px;align-items:center;margin-bottom:5px;">
+    <div style="display:grid;grid-template-columns:2fr 80px 80px auto;gap:6px;align-items:center;margin-bottom:4px;">
       <input value="${it.PartNo||''}" placeholder="品號" onchange="editOrderItems[${i}].PartNo=this.value;syncEditItem(${i});" style="font-size:12px;padding:5px 8px;">
       <input type="number" value="${it.Qty||''}" placeholder="數量" min="1" onchange="editOrderItems[${i}].Qty=Number(this.value);" style="font-size:12px;padding:5px 8px;">
       <input type="number" value="${it.Tonnage||''}" placeholder="機台T" onchange="editOrderItems[${i}].Tonnage=Number(this.value);" style="font-size:12px;padding:5px 8px;">
       <button class="btn btn-danger btn-sm" onclick="removeEditItem(${i})">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 90px;gap:6px;margin-bottom:8px;">
+      <input type="text" list="mold-loc-list" value="${it.MoldLocation||''}" placeholder="📍 模具位置（例：B2左）" style="font-size:12px;padding:5px 8px;" onchange="editOrderItems[${i}].MoldLocation=this.value" autocomplete="off">
+      <input type="text" value="${it.MoldNumber||''}" placeholder="編號" style="font-size:12px;padding:5px 8px;" onchange="editOrderItems[${i}].MoldNumber=this.value">
     </div>`).join('');
 }
 function syncEditItem(i){
@@ -1035,7 +1451,7 @@ function syncEditItem(i){
   if(r){editOrderItems[i].Tonnage=r.Tonnage;editOrderItems[i].Material=r.Material;editOrderItems[i].Product=r.Product;editOrderItems[i].Color=r.Color;}
   renderEditItems();
 }
-function addEditItem(){editOrderItems.push({PartNo:'',Qty:0,Tonnage:0,Material:'',Product:'',Color:''});renderEditItems();}
+function addEditItem(){editOrderItems.push({PartNo:'',Qty:0,Tonnage:0,Material:'',Product:'',Color:'',MoldLocation:'',MoldNumber:''});renderEditItems();}
 function removeEditItem(i){editOrderItems.splice(i,1);renderEditItems();}
 function saveEditOrder(){
   const pool=editOrderSource==='history'?completedOrders:editOrderSource==='held'?heldOrders:orders;
@@ -1052,6 +1468,7 @@ function saveEditOrder(){
     OrderDate:document.getElementById('oe-orderdate').value||pool[idx].OrderDate||'',
     Due:document.getElementById('oe-due').value||pool[idx].Due,
     Location:document.getElementById('oe-location').value.trim(),
+    LR:document.getElementById('oe-lr').value||null,
     Note:document.getElementById('oe-note').value.trim(),
     Urgent:document.getElementById('oe-urgent').checked,
     items:valid,updatedAt:new Date().toISOString()
@@ -1078,7 +1495,7 @@ function generateSchedule(){
         if(a.Material!==b.Material)return a.Material.localeCompare(b.Material);
         return a.Tonnage-b.Tonnage;
       });
-      const startD=new Date();startD.setHours(0,0,0,0);
+      const startD=scheduleConfig.scheduleStartDate?new Date(scheduleConfig.scheduleStartDate):new Date();startD.setHours(0,0,0,0);
       const days=14;
       // Build horizon skipping weekends unless weekendOvertime is on
       const horizon=[];let di=0;while(horizon.length<days){const d=new Date(startD);d.setDate(d.getDate()+di);di++;const dow=d.getDay();if(!scheduleConfig.weekendOvertime&&(dow===0||dow===6))continue;horizon.push(dateStr(d));}
@@ -1248,10 +1665,12 @@ function searchOrders(){
       <div style="flex:1;min-width:0;">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">
           ${o.Urgent?'<span class="badge b-red">🚨</span>':''}
+          ${o.LR==='L'?'<span style="display:inline-flex;align-items:center;padding:2px 9px;border-radius:10px;font-size:12px;font-weight:700;background:rgba(88,166,255,.25);color:var(--ac);">◀ L</span>':o.LR==='R'?'<span style="display:inline-flex;align-items:center;padding:2px 9px;border-radius:10px;font-size:12px;font-weight:700;background:rgba(63,185,80,.25);color:var(--gr);">▶ R</span>':''}
           <strong style="color:var(--ac);">${o.OrderNo}</strong>
           ${o.Company?`<span class="badge b-purple">${o.Company}</span>`:''}
+          ${(()=>{const it=o.items&&o.items[0];const loc=it?.MoldLocation||o.MoldLocation;const num=it?.MoldNumber||'';return loc?`<span class="badge b-orange">📍${loc}${num?'-'+num:''}</span>`:''})()}
           ${o.OrderDate?`<span class="badge b-orange">📅${o.OrderDate}</span>`:''}
-          <span class="badge b-yellow">交貨 ${o.Due}</span>
+          ${o.Due?`<span class="badge b-yellow">交貨 ${o.Due}</span>`:''}
           <span class="badge b-blue">${o.items.length} 品項</span>
         </div>
         <div style="font-size:12px;color:var(--tx2);">
@@ -1736,8 +2155,10 @@ function renderHeldOrders(){
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           ${o.Urgent?'<span class="badge b-red">🚨 緊急</span>':''}
           <span class="badge b-orange">📦 待出貨</span>
+          ${o.LR==='L'?'<span style="display:inline-flex;align-items:center;padding:2px 9px;border-radius:10px;font-size:12px;font-weight:700;background:rgba(88,166,255,.25);color:var(--ac);">◀ L 左</span>':o.LR==='R'?'<span style="display:inline-flex;align-items:center;padding:2px 9px;border-radius:10px;font-size:12px;font-weight:700;background:rgba(63,185,80,.25);color:var(--gr);">▶ R 右</span>':''}
           <strong style="color:var(--ac);">${o.OrderNo||'—'}</strong>
           ${o.Company?`<span class="badge b-purple">${o.Company}</span>`:''}
+          ${(()=>{const it=o.items&&o.items[0];const loc=it?.MoldLocation||o.MoldLocation;const num=it?.MoldNumber||'';return loc?`<span class="badge b-orange">📍${loc}${num?'-'+num:''}</span>`:''})()}
           ${o.Due?`<span class="badge b-yellow">交貨 ${o.Due}</span>`:''}
         </div>
         <div style="display:flex;gap:5px;flex-wrap:wrap;">
@@ -1770,6 +2191,7 @@ function renderHeldSummary(){
 
 // ── SCHEDULE CONFIG ─────────────────────────────
 function renderScheduleConfig(){
+  document.getElementById('cfg-start-date').value=scheduleConfig.scheduleStartDate||'';
   document.getElementById('cfg-work-start').value=scheduleConfig.workStart||'08:00';
   document.getElementById('cfg-work-end').value=scheduleConfig.workEnd||'20:00';
   document.getElementById('cfg-break-min').value=scheduleConfig.breakMin||60;
@@ -1800,13 +2222,14 @@ function updateConfigCapPreview(){
   }catch(e){}
 }
 function saveScheduleConfig(){
+  const startDate=document.getElementById('cfg-start-date').value||'';
   const s=document.getElementById('cfg-work-start').value||'08:00';
   const e=document.getElementById('cfg-work-end').value||'20:00';
   const b=Number(document.getElementById('cfg-break-min').value)||0;
   const wknd=document.getElementById('cfg-weekend').checked;
   const active=MACHINES.filter(m=>document.getElementById('cfg-m-'+m)&&document.getElementById('cfg-m-'+m).checked);
   if(!active.length){toast('請至少選擇一台機台','warning');return;}
-  scheduleConfig={workStart:s,workEnd:e,breakMin:b,weekendOvertime:wknd,activeMachines:active};
+  scheduleConfig={scheduleStartDate:startDate,workStart:s,workEnd:e,breakMin:b,weekendOvertime:wknd,activeMachines:active};
   saveToStorage();renderScheduleConfig();
   toast('排程設定已儲存','success');
 }
